@@ -1,16 +1,16 @@
 import {
   createContext,
   useCallback,
+  useContext,
   useEffect,
-  useReducer,
   useRef,
-  type PropsWithChildren,
+  useState,
 } from "react";
 import { api } from "@/lib/api";
 import { mergeBlogs } from "@/lib/reading";
-import type { BlogPage, BlogSummary } from "@/types/blog";
+import type { BlogSummary } from "@/types/blog";
 
-export interface BlogFeedState {
+interface BlogFeedState {
   items: BlogSummary[];
   page: number;
   hasMore: boolean;
@@ -21,7 +21,12 @@ export interface BlogFeedState {
   requestedPage: number;
 }
 
-export const initialFeed: BlogFeedState = {
+interface BlogContextType {
+  feeds: Record<string, BlogFeedState>;
+  load(query: string, page: number, refresh?: boolean): Promise<void>;
+}
+
+const initialFeed: BlogFeedState = {
   items: [],
   page: 0,
   hasMore: false,
@@ -32,64 +37,14 @@ export const initialFeed: BlogFeedState = {
   requestedPage: 1,
 };
 
-type FeedAction =
-  | { type: "request"; query: string; page: number; refresh: boolean }
-  | { type: "success"; query: string; result: BlogPage }
-  | { type: "failure"; query: string };
+export const BlogContext = createContext<BlogContextType | null>(null);
 
-type Feeds = Record<string, BlogFeedState>;
-
-export function blogReducer(feeds: Feeds, action: FeedAction): Feeds {
-  const current = feeds[action.query] ?? initialFeed;
-  let next: BlogFeedState;
-  switch (action.type) {
-    case "request":
-      next = {
-        ...current,
-        loading: true,
-        refreshing: action.refresh,
-        error: false,
-        requestedPage: action.page,
-      };
-      break;
-    case "success":
-      next = {
-        ...current,
-        items:
-          action.result.page === 1
-            ? action.result.items
-            : mergeBlogs(current.items, action.result.items),
-        page: action.result.page,
-        hasMore: action.result.page < action.result.totalPages,
-        loading: false,
-        refreshing: false,
-        error: false,
-        initialized: true,
-      };
-      break;
-    case "failure":
-      next = {
-        ...current,
-        loading: false,
-        refreshing: false,
-        error: true,
-        initialized: true,
-      };
-  }
-  return { ...feeds, [action.query]: next };
-}
-
-interface BlogContextValue {
-  feeds: Feeds;
-  load: (query: string, page: number, refresh?: boolean) => Promise<void>;
-}
-
-export const BlogContext = createContext<BlogContextValue | undefined>(
-  undefined,
-);
-
-export function BlogProvider({ children }: PropsWithChildren) {
-  const [feeds, dispatch] = useReducer(blogReducer, {});
+export const BlogContextProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
+  const [feeds, setFeeds] = useState<Record<string, BlogFeedState>>({});
   const requests = useRef(new Map<string, AbortController>());
 
   const load = useCallback(
@@ -99,16 +54,52 @@ export function BlogProvider({ children }: PropsWithChildren) {
       pending?.abort();
       const controller = new AbortController();
       requests.current.set(query, controller);
-      dispatch({ type: "request", query, page, refresh });
+      setFeeds((current) => ({
+        ...current,
+        [query]: {
+          ...(current[query] ?? initialFeed),
+          loading: true,
+          refreshing: refresh,
+          error: false,
+          requestedPage: page,
+        },
+      }));
+
       const params = new URLSearchParams(query);
       params.set("page", String(page));
       params.set("limit", "10");
       try {
         const result = await api.blogs(params.toString(), controller.signal);
-        if (!controller.signal.aborted)
-          dispatch({ type: "success", query, result });
+        if (controller.signal.aborted) return;
+        setFeeds((current) => ({
+          ...current,
+          [query]: {
+            ...current[query],
+            items:
+              result.page === 1
+                ? result.items
+                : mergeBlogs(current[query].items, result.items),
+            page: result.page,
+            hasMore: result.page < result.totalPages,
+            loading: false,
+            refreshing: false,
+            error: false,
+            initialized: true,
+          },
+        }));
       } catch {
-        if (!controller.signal.aborted) dispatch({ type: "failure", query });
+        if (!controller.signal.aborted) {
+          setFeeds((current) => ({
+            ...current,
+            [query]: {
+              ...current[query],
+              loading: false,
+              refreshing: false,
+              error: true,
+              initialized: true,
+            },
+          }));
+        }
       } finally {
         if (requests.current.get(query) === controller)
           requests.current.delete(query);
@@ -130,4 +121,36 @@ export function BlogProvider({ children }: PropsWithChildren) {
       {children}
     </BlogContext.Provider>
   );
-}
+};
+
+export const useBlogs = (query = "") => {
+  const context = useContext(BlogContext);
+  if (!context) {
+    throw new Error("useBlogs must be used within a BlogContextProvider");
+  }
+
+  const params = new URLSearchParams(query);
+  params.sort();
+  const key = params.toString();
+  const { feeds, load } = context;
+  const state = feeds[key] ?? initialFeed;
+  const initialized = state.initialized;
+
+  useEffect(() => {
+    if (!initialized) void load(key, 1);
+  }, [initialized, key, load]);
+
+  return {
+    ...state,
+    refresh: () => {
+      void load(key, 1, true);
+    },
+    loadMore: () => {
+      if (state.hasMore && !state.loading && !state.error)
+        void load(key, state.page + 1);
+    },
+    retry: () => {
+      void load(key, state.requestedPage);
+    },
+  };
+};

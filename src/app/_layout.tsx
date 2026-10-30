@@ -1,4 +1,4 @@
-import { BlogProvider } from "@/contexts/BlogContext";
+import { BlogContextProvider } from "@/contexts/BlogContext";
 import { Lora_700Bold } from "@expo-google-fonts/lora/700Bold";
 import "@/global.css";
 import { Lora_400Regular } from "@expo-google-fonts/lora/400Regular";
@@ -45,7 +45,7 @@ export default function RootLayout() {
           },
         }}
       >
-        <BlogProvider>
+        <BlogContextProvider>
           <StatusBar style={isDark ? "light" : "dark"} />
           <Stack
             screenOptions={{
@@ -53,7 +53,7 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: colors.background },
             }}
           />
-        </BlogProvider>
+        </BlogContextProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
