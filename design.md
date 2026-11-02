@@ -408,3 +408,12 @@ Forms label Category · Required with one-choice controls, and Tags · Optional 
 Place the category in a small sage badge beside the article title. Let long titles/categories wrap naturally without overlapping. Preserve category-filter navigation; Uncategorized is a noninteractive badge when no category exists.
 
 Below the heading, use one vertically centered metadata row: avatar and truncated author name on the left, publication date on the right. Remove the duplicate category section from the article footer; keep the separate Tags section there.
+## 25. Profile post options — 2026-11-02
+
+Use a 44-unit ellipsis touch target at the right of the post byline, separate from the article-opening link. Present supported management actions in a cream bottom sheet over a dimmed backdrop, with rounded top corners, theme-colored icons, grouped surface rows, and a clearly labeled close button. Keep status/privacy badges on the card and move Edit into the sheet.
+
+Use actual backend semantics: permanent deletion with confirmation, publishing, and moving to drafts. Do not copy unsupported reference actions or claim a recoverable trash feature. The sheet respects safe areas, scrolls for larger text/smaller screens, handles Android Back, and shows busy/error states.
+
+## 26. Categories and tags management — 2026-11-02
+
+Keep the existing cream/sage palette, reading typography, safe-area toolbar, and shared form fields/buttons. Present categories as a compact scrolling list with a Manage tags link; show tags with a # prefix on their category's screen. Place Add category/Add tag above the list, and Rename only below entries created by the signed-in user, including admins. Authors see Delete only on their own entries; admins see Delete on every entry. State that taxonomy is shared and explain permissions. Use a focused name form for creation/renaming and an explicit native confirmation describing category deletion's cascading effects. Provide access through Profile → Account and a text link above the composer's category selector.

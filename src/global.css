@@ -204,3 +204,12 @@
     @apply h-80 w-full rounded-lg border bg-surface px-4 py-3 text-[16px] leading-[26px] text-foreground;
   }
 }
+
+@layer components {
+  .post-action-row {
+    @apply min-h-16 flex-row items-center gap-4 py-4 active:opacity-60 disabled:opacity-50;
+  }
+  .post-action-label {
+    @apply text-[16px] leading-[24px] font-semibold text-foreground;
+  }
+}

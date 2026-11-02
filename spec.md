@@ -388,3 +388,16 @@ Per the latest reference, bottom navigation now has Home, a central create actio
 New posts now distinguish Category (one required main topic) from Tags (optional labels, up to 10). Tags load using the selected category UUID. Changing category clears selected tags; selecting the same category retains them. Loading, empty, error/retry, selection limits, and cancellation of stale category requests are handled. Create requests include selected tag UUIDs, validated against the selected category. Existing-post editing continues to preserve taxonomy.
 
 The article reader separately labels Category and Tags and presents tags with a # prefix. Both remain links to filtered discovery. Per user confirmation, pale green applies to the bottom navigation, badges, and profile avatars.
+## 22. Profile post management sheet — 2026-11-02
+
+Each own post now has an ellipsis button beside its byline. It opens one shared bottom sheet for the selected post, replacing the inline Edit link. Supported actions are Edit post, Publish/Move to draft, and Delete post. Status changes send only status, preserving full content. Moderation restrictions disable publishing. Successful mutations immediately remove the post from its old filtered list, refresh Profile, and invalidate public caches.
+
+Deletion requires explicit confirmation and is permanent; no trash/restore promise or 30-day retention is shown. Failed mutations preserve the list and sheet with retryable error feedback. Duplicate requests and dismissing an active write are prevented. Pinning, bookmarks, archives, subscriptions, and albums from the visual reference are not supported actions.
+
+## 23. Category and tag management — 2026-11-02
+
+Signed-in users open Categories and tags from Profile → Account or the post composer. The category list opens a category's tags; each tag has one fixed parent category. Both lists support creation, renaming, refresh, loading/empty/error states, and cancellation of requests when leaving. Authors rename/delete only their own entries. Admins rename only their own entries and may delete any entry. Direct edit links load the current entry and require ownership before displaying the form, including for admins. Edit and delete use separate permission checks. Server authorization remains authoritative; this mobile revision does not change backend permissions.
+
+Names normalize whitespace and require 1–100 Unicode characters with a letter or number. Duplicate names show the backend error without losing input. Creation with an uncertain network outcome requires checking the list before resubmitting. Writes are never automatically retried; duplicate taps are blocked. Rename requests send only name; creating a tag also sends categoryId.
+
+Deletion requires confirmation. Deleting a category permanently removes its child tags and post-tag links; posts remain with Uncategorized. Deleting a tag removes its post links and keeps posts. Renaming changes slugs and invalidates old filter links. Successful writes invalidate public feeds. Category/tag choices reload on screen focus so returning to the composer reflects changes. The backend must be redeployed with creator-or-admin deletion guards; no dependency changes are needed.

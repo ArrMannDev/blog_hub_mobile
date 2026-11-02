@@ -1,3 +1,5 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useTheme } from "@/hooks/use-theme";
 import { Link } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { MarkdownIt } from "react-native-markdown-display";
@@ -30,10 +32,13 @@ function excerptText(markdown: string): string {
 export default function ArticleCard({
   blog,
   editable = false,
+  onManage,
 }: {
   blog: BlogSummary;
   editable?: boolean;
+  onManage?: () => void;
 }) {
+  const { colors } = useTheme();
   const editRoute = {
     pathname: "/posts/[id]/edit",
     params: { id: blog.id },
@@ -41,7 +46,9 @@ export default function ArticleCard({
   const isDraft = editable && blog.status === "draft";
   return (
     <View
-      className={editable ? "flex-none border-b border-border" : "flex-none"}
+      className={
+        editable ? "relative flex-none border-b border-border" : "flex-none"
+      }
     >
       <Link
         href={
@@ -58,7 +65,7 @@ export default function ArticleCard({
               ? `Edit draft ${blog.title}`
               : `Read ${blog.title} by ${blog.author.displayName}`
           }
-          className={editable ? "article-row border-b-0 pb-2" : "article-row"}
+          className={editable ? "article-row border-b-0" : "article-row"}
         >
           <View className="article-avatar" accessible={false}>
             <Text className="article-avatar-text">
@@ -66,7 +73,9 @@ export default function ArticleCard({
             </Text>
           </View>
           <View className="article-copy">
-            <View className="article-byline">
+            <View
+              className={onManage ? "article-byline pr-10" : "article-byline"}
+            >
               <Text className="article-author" numberOfLines={1}>
                 {blog.author.displayName}
               </Text>
@@ -82,6 +91,19 @@ export default function ArticleCard({
                 {blog.categoryName}
               </Text>
             </View>
+            {editable && (
+              <View className="mt-2 items-start">
+                <Text className="post-status">
+                  {isDraft ? "Draft · Only you" : "Published"}
+                </Text>
+                {blog.publicationBlocked && (
+                  <Text className="form-error mt-2">
+                    Publishing restricted by moderation. You can still edit this
+                    draft.
+                  </Text>
+                )}
+              </View>
+            )}
             <Text className="article-excerpt" numberOfLines={3}>
               {excerptText(blog.excerpt)}
             </Text>
@@ -93,27 +115,19 @@ export default function ArticleCard({
           </View>
         </Pressable>
       </Link>
-      {editable && (
-        <View className="ml-[68px] mr-4 flex-row flex-wrap items-center justify-between gap-2 pb-3">
-          <Text className="post-status">
-            {isDraft ? "Draft · Only you" : "Published"}
-          </Text>
-          <Link href={editRoute} asChild>
-            <Pressable
-              accessibilityRole="link"
-              accessibilityLabel={`Edit ${blog.title}`}
-              className="text-action px-2"
-            >
-              <Text className="text-action-label">Edit post</Text>
-            </Pressable>
-          </Link>
-          {blog.publicationBlocked && (
-            <Text className="form-error w-full">
-              Publishing restricted by moderation. You can still edit this
-              draft.
-            </Text>
-          )}
-        </View>
+      {editable && onManage && (
+        <Pressable
+          className="icon-button absolute right-2 top-3"
+          accessibilityRole="button"
+          accessibilityLabel={`Manage ${blog.title}`}
+          onPress={onManage}
+        >
+          <Ionicons
+            name="ellipsis-horizontal"
+            size={23}
+            color={colors.secondary}
+          />
+        </Pressable>
       )}
     </View>
   );

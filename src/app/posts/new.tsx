@@ -49,6 +49,10 @@ function Composer() {
   async function save(edits: BlogEdits) {
     if (uncertain)
       throw new Error("Check your Profile before creating another post.");
+    if (!createdId.current && (loading || error))
+      throw new Error("Load the current categories before saving your post.");
+    if (!createdId.current && categoryId && (tagsLoading || tagsError))
+      throw new Error("Load the current tags before saving your post.");
     if (
       !createdId.current &&
       !categories.some((category) => category.id === categoryId)
@@ -95,6 +99,17 @@ function Composer() {
     <BlogEditor onSave={save} disabled={uncertain}>
       {(saving) => (
         <View className="mb-5">
+          <Link href="/topics" asChild>
+            <Pressable
+              accessibilityRole="link"
+              className="text-action mb-3"
+              disabled={saving || uncertain}
+            >
+              <Text className="text-action-label">
+                Manage categories and tags
+              </Text>
+            </Pressable>
+          </Link>
           <Text className="field-label">Category · Required</Text>
           <Text className="form-description mb-3">
             Choose one main topic for your post.

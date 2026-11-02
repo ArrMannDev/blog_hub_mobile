@@ -85,6 +85,11 @@ export function useMyBlogs(status: BlogStatus) {
 
   return {
     ...state,
+    removeFromList: (id: string) =>
+      setState((current) => ({
+        ...current,
+        items: current.items.filter((item) => item.id !== id),
+      })),
     refresh: () => {
       void load(1, true);
     },

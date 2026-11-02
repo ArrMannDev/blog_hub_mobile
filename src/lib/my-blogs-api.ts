@@ -8,6 +8,20 @@ import type {
 import { request } from "./api";
 
 export const myBlogsApi = {
+  setStatus: (id: string, status: BlogStatus, token: string) =>
+    request<Blog>(`/blogs/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status }),
+    }),
+  remove: (id: string, token: string) =>
+    request<void>(`/blogs/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
   create: (input: NewBlogInput, token: string) =>
     request<Blog>("/blogs", {
       method: "POST",

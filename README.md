@@ -99,3 +99,11 @@ The latest design moves + into the center of an attached dark bottom bar between
 ### Categories and tags
 
 Choose one required category when creating a post. Tags are optional; select up to 10 from that category. Changing the category clears its tag selections. The article reader labels Category and Tags separately. The navigation, badges, and avatar backgrounds now use pale sage green with warm cream and dark ink.
+### Managing posts on Profile
+
+Tap … beside an own post to open Edit post, Publish/Move to draft, or Delete post. Deletion asks for confirmation and permanently removes the post; there is no trash or restore. Status changes preserve content. Profile and public caches refresh after successful actions, while failed requests leave the options open for retry. Check the new sheet, dismissal, editing, status changes, and confirmed deletion on a phone before release.
+
+### Category and tag management
+
+Open **Profile → Account → Categories and tags**, or **Manage categories and tags** in the post composer. Open a category to manage its tags. Authors can add entries and rename/delete their own. Admins can rename only their own entries and delete any entry. Direct rename links verify ownership from the API before showing a form, including for admins. Deleting a category also deletes all child tags, while preserving posts as Uncategorized. Renames change public filter slugs. Lists refresh on return; the composer reloads category/tag choices. Redeploy the backend with creator-or-admin deletion permissions. No new dependencies are required.
+

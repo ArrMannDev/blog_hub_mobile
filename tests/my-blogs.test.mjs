@@ -22,6 +22,7 @@ function load(path, mocks) {
   runInNewContext(outputText, {
     exports: module.exports,
     AbortController,
+    Error,
     require: (name) => (name in mocks ? mocks[name] : require(name)),
   });
   return module.exports;
@@ -372,8 +373,11 @@ test("failed saves preserve editor text and remain protected from accidental bac
   assert.equal(repeated, 1);
 });
 
-test("draft cards open the private editor while published cards retain their public reader", () => {
+test("own cards open the correct destination and manage uses a separate ellipsis button", () => {
+  let managed = 0;
   const { default: ArticleCard } = load("components/ArticleCard.tsx", {
+    "@expo/vector-icons/Ionicons": { __esModule: true, default: "Ionicons" },
+    "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },
     "expo-router": { Link: "Link" },
     "react-native": { Pressable: "Pressable", Text: "Text", View: "View" },
     "react-native-markdown-display": {
@@ -382,18 +386,29 @@ test("draft cards open the private editor while published cards retain their pub
     "@/lib/reading": require("../src/lib/reading.ts"),
     "./ArticleImage": { __esModule: true, default: "ArticleImage" },
   });
-  let links = elements(ArticleCard({ blog, editable: true })).filter(
-    ({ type }) => type === "Link",
-  );
+  const tree = ArticleCard({ blog, editable: true, onManage: () => managed++ });
+  const links = elements(tree).filter(({ type }) => type === "Link");
+  assert.equal(links.length, 1);
   assert.equal(links[0].props.href.pathname, "/posts/[id]/edit");
-  assert.equal(links[1].props.href.params.id, blog.id);
-  links = elements(
-    ArticleCard({ blog: { ...blog, status: "published" }, editable: true }),
-  ).filter(({ type }) => type === "Link");
-  assert.equal(links[0].props.href.pathname, "/blogs/[slug]");
-  assert.equal(links[1].props.href.pathname, "/posts/[id]/edit");
+  const menu = elements(tree).find(
+    (node) => node.props?.accessibilityLabel === `Manage ${blog.title}`,
+  );
+  menu.props.onPress();
+  assert.equal(managed, 1);
+  assert.equal(elements(links[0]).includes(menu), false);
+  const publicTree = ArticleCard({ blog: { ...blog, status: "published" } });
+  assert.equal(
+    elements(publicTree).some(
+      (node) => node.props?.accessibilityLabel === `Manage ${blog.title}`,
+    ),
+    false,
+  );
+  assert.equal(
+    elements(publicTree).find(({ type }) => type === "Link").props.href
+      .pathname,
+    "/blogs/[slug]",
+  );
 });
-
 test("the editor requires sign-in and never renders another account's post", async () => {
   const h = hooks();
   let user = null,
@@ -831,9 +846,9 @@ test("tag requests cancel old categories and late results cannot replace current
   const requests = [];
   let effect, cleanup;
   const { useTags } = load("hooks/use-tags.ts", {
-    react: {
-      ...h.react,
-      useEffect: (callback) => {
+    react: h.react,
+    "expo-router": {
+      useFocusEffect: (callback) => {
         effect = callback;
       },
     },
@@ -862,4 +877,174 @@ test("tag requests cancel old categories and late results cannot replace current
   assert.equal(requests[0].signal.aborted, true);
   assert.equal(render("b").tags[0].id, "b-tag");
   cleanup();
+});
+
+function postActions({
+  status = "published",
+  blocked = false,
+  failure,
+  wait,
+} = {}) {
+  const h = hooks();
+  const calls = [],
+    removed = [],
+    destinations = [];
+  let closed = 0,
+    invalidated = 0,
+    alert;
+  const { default: PostActions } = load("components/PostActions.tsx", {
+    react: {
+      ...h.react,
+      useContext: () => ({ invalidate: () => invalidated++ }),
+    },
+    "@expo/vector-icons/Ionicons": { __esModule: true, default: "Ionicons" },
+    "expo-router": { router: { push: (value) => destinations.push(value) } },
+    "react-native": {
+      ActivityIndicator: "ActivityIndicator",
+      Alert: {
+        alert: (...args) => {
+          alert = args;
+        },
+      },
+      Modal: "Modal",
+      Platform: { OS: "ios" },
+      Pressable: "Pressable",
+      ScrollView: "ScrollView",
+      Text: "Text",
+      View: "View",
+    },
+    "react-native-safe-area-context": {
+      useSafeAreaInsets: () => ({ top: 44, bottom: 34 }),
+    },
+    "@/contexts/AuthContext": {
+      useAuth: () => ({ getAccessToken: async () => "token" }),
+    },
+    "@/contexts/BlogContext": { BlogContext: {} },
+    "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },
+    "@/lib/api": { ApiError },
+    "./AuthFields": { FormMessage: "FormMessage" },
+    "@/lib/my-blogs-api": {
+      myBlogsApi: {
+        setStatus: async (...args) => {
+          calls.push({ action: "status", args });
+          if (wait) await wait;
+          if (failure) throw failure;
+        },
+        remove: async (...args) => {
+          calls.push({ action: "delete", args });
+          if (failure) throw failure;
+        },
+      },
+    },
+  });
+  return {
+    render() {
+      h.reset();
+      return PostActions({
+        blog: { ...blog, status, publicationBlocked: blocked },
+        onClose: () => closed++,
+        onChanged: (id) => removed.push(id),
+      });
+    },
+    button(label) {
+      return elements(this.render()).find(
+        (node) =>
+          node.type === "Pressable" &&
+          elements(node.props.children).some(
+            (child) => child.type === "Text" && child.props.children === label,
+          ),
+      );
+    },
+    calls,
+    removed,
+    destinations,
+    get closed() {
+      return closed;
+    },
+    get invalidated() {
+      return invalidated;
+    },
+    get alert() {
+      return alert;
+    },
+  };
+}
+
+test("management status updates do not fetch or overwrite content, and block duplicate actions", async () => {
+  let resolve;
+  const app = postActions({
+    wait: new Promise((done) => {
+      resolve = done;
+    }),
+  });
+  app.button("Move to draft").props.onPress();
+  app.button("Move to draft").props.onPress();
+  await tick();
+  app.render().props.onRequestClose();
+  assert.equal(app.closed, 0);
+  assert.equal(app.calls.length, 1);
+  assert.deepEqual(app.calls[0].args, [blog.id, "draft", "token"]);
+  resolve();
+  await tick();
+  assert.equal(app.removed.join(), blog.id);
+  assert.equal(app.invalidated, 1);
+  assert.equal(app.closed, 1);
+});
+
+test("delete requires confirmation; failures keep the sheet and list intact", async () => {
+  const app = postActions({ failure: new Error("offline") });
+  app.button("Delete post").props.onPress();
+  assert.equal(app.calls.length, 0);
+  assert.equal(app.alert[2][0].style, "cancel");
+  assert.match(app.alert[1], /permanently/);
+  app.alert[2][1].onPress();
+  await tick();
+  assert.equal(app.calls[0].action, "delete");
+  assert.equal(app.closed, 0);
+  assert.equal(app.removed.length, 0);
+  assert.ok(
+    elements(app.render()).some(
+      (node) =>
+        node.type === "FormMessage" && node.props.children === "offline",
+    ),
+  );
+  const success = postActions();
+  success.button("Delete post").props.onPress();
+  success.alert[2][1].onPress();
+  await tick();
+  assert.equal(success.removed.join(), blog.id);
+  assert.equal(success.closed, 1);
+});
+
+test("the menu respects moderation and routes Edit to the private editor", async () => {
+  const blocked = postActions({ status: "draft", blocked: true });
+  assert.equal(blocked.button("Publish post").props.disabled, true);
+  blocked.button("Publish post").props.onPress();
+  await tick();
+  assert.equal(blocked.calls.length, 0);
+  const app = postActions({ status: "draft", failure: new ApiError(403) });
+  app.button("Publish post").props.onPress();
+  await tick();
+  assert.equal(app.button("Publish post").props.disabled, true);
+  app.button("Edit post").props.onPress();
+  assert.equal(app.destinations[0].params.id, blog.id);
+  assert.equal(app.destinations[0].pathname, "/posts/[id]/edit");
+});
+
+test("management API changes only status and handles DELETE without a request body", async () => {
+  const calls = [];
+  const { myBlogsApi } = load("lib/my-blogs-api.ts", {
+    "./api": {
+      request: async (path, options) => {
+        calls.push({ path, options });
+      },
+    },
+  });
+  await myBlogsApi.setStatus("a/b", "draft", "token");
+  await myBlogsApi.remove("a/b", "token");
+  assert.equal(calls[0].path, "/blogs/a%2Fb");
+  assert.deepEqual(JSON.parse(calls[0].options.body), { status: "draft" });
+  assert.equal(calls[1].options.method, "DELETE");
+  assert.equal(calls[1].options.body, undefined);
+  assert.equal(calls[1].options.headers.Authorization, "Bearer token");
 });

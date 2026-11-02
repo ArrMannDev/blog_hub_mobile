@@ -96,6 +96,25 @@ export default function ProfileHeader({ user }: { user: AuthUser }) {
       {expanded && (
         <View className="mt-4">
           {!!error && <FormMessage error>{error}</FormMessage>}
+          <Link href="/topics" asChild>
+            <Pressable
+              accessibilityRole="link"
+              disabled={busy}
+              className="account-row mb-4"
+            >
+              <Ionicons
+                name="pricetags-outline"
+                size={21}
+                color={colors.foreground}
+              />
+              <Text className="account-row-label">Categories and tags</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={colors.secondary}
+              />
+            </Pressable>
+          </Link>
           <Link
             href={{
               pathname: "/account/[action]",
