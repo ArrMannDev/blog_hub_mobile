@@ -403,3 +403,8 @@ Keep the attached Home / + / Profile layout, but use the existing navigation col
 The confirmed pale green accent replaces the earlier pale-butter navigation token: light #C5D7BA, dark #2C4232. Use it for navigation, avatar backgrounds, category badges, and unselected tag pills. Keep primary reading paper #F2EDE3, ink #24251B, and the existing typography. Selected tag pills use ink fill with paper-colored text.
 
 Forms label Category · Required with one-choice controls, and Tags · Optional with multiple-choice #tag pills and a selected count. Keep the sections separated by space and a fine rule. The reader also groups Category and Tags separately. This revision supersedes earlier navigation/accent palette values.
+## 24. Article detail heading — 2026-11-02
+
+Place the category in a small sage badge beside the article title. Let long titles/categories wrap naturally without overlapping. Preserve category-filter navigation; Uncategorized is a noninteractive badge when no category exists.
+
+Below the heading, use one vertically centered metadata row: avatar and truncated author name on the left, publication date on the right. Remove the duplicate category section from the article footer; keep the separate Tags section there.

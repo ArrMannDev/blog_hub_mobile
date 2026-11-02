@@ -15,7 +15,6 @@ import Screen from "@/components/Screen";
 import StateMessage from "@/components/StateMessage";
 import { useTheme } from "@/hooks/use-theme";
 import { api, ApiError } from "@/lib/api";
-import { formatDate } from "@/lib/reading";
 import type { Blog } from "@/types/blog";
 
 export default function ArticleScreen() {
@@ -109,23 +108,14 @@ function ArticleReader({ slug }: { slug: string }) {
           showsVerticalScrollIndicator={false}
         >
           <View className="px-5 pt-2 pb-6">
-            <Text
-              className="reader-title"
-              accessibilityRole="header"
-              selectable
-            >
-              {blog.title}
-            </Text>
-            <Text className="article-meta mb-4">
-              {formatDate(blog.publishedAt)}
-            </Text>
-            <AuthorLine name={blog.author.displayName} />
-          </View>
-          <ArticleImage key={blog.coverImageUrl} url={blog.coverImageUrl} />
-          <View className="px-5 pt-6">
-            <MarkdownBody content={blog.content} />
-            <View className="mt-4 border-t border-border pt-4">
-              <Text className="field-label">Category</Text>
+            <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
+              <Text
+                className="reader-title max-w-full shrink"
+                accessibilityRole="header"
+                selectable
+              >
+                {blog.title}
+              </Text>
               {blog.category ? (
                 <Link
                   href={{
@@ -136,48 +126,61 @@ function ArticleReader({ slug }: { slug: string }) {
                 >
                   <Pressable
                     accessibilityRole="link"
-                    className="self-start min-h-11 justify-center rounded-full bg-navigation px-3"
+                    accessibilityLabel={`Category: ${blog.category.name}`}
+                    className="min-h-11 max-w-full justify-center"
                   >
-                    <Text className="text-[14px] leading-[20px] text-foreground">
+                    <Text className="rounded-full border border-border bg-navigation px-2 py-1 text-[12px] leading-[18px] text-foreground">
                       {blog.category.name}
                     </Text>
                   </Pressable>
                 </Link>
               ) : (
-                <Text className="form-description">{blog.categoryName}</Text>
-              )}
-              {blog.tags.length > 0 && (
-                <View className="mt-4">
-                  <Text className="field-label">Tags</Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {blog.tags.map((tag) => (
-                      <Link
-                        key={tag.id}
-                        href={{
-                          pathname: "/explore",
-                          params: {
-                            ...(blog.category
-                              ? { category: blog.category.slug }
-                              : {}),
-                            tag: tag.slug,
-                          },
-                        }}
-                        asChild
-                      >
-                        <Pressable
-                          accessibilityRole="link"
-                          className="min-h-11 justify-center rounded-full bg-navigation px-3"
-                        >
-                          <Text className="text-[14px] leading-[20px] text-foreground">
-                            #{tag.name}
-                          </Text>
-                        </Pressable>
-                      </Link>
-                    ))}
-                  </View>
-                </View>
+                <Text className="rounded-full border border-border bg-navigation px-2 py-1 text-[12px] leading-[18px] text-foreground">
+                  {blog.categoryName}
+                </Text>
               )}
             </View>
+            <View className="mt-3">
+              <AuthorLine
+                name={blog.author.displayName}
+                date={blog.publishedAt}
+              />
+            </View>
+          </View>
+          <ArticleImage key={blog.coverImageUrl} url={blog.coverImageUrl} />
+          <View className="px-5 pt-6">
+            <MarkdownBody content={blog.content} />
+            {blog.tags.length > 0 && (
+              <View className="mt-4 border-t border-border pt-4">
+                <Text className="field-label">Tags</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {blog.tags.map((tag) => (
+                    <Link
+                      key={tag.id}
+                      href={{
+                        pathname: "/explore",
+                        params: {
+                          ...(blog.category
+                            ? { category: blog.category.slug }
+                            : {}),
+                          tag: tag.slug,
+                        },
+                      }}
+                      asChild
+                    >
+                      <Pressable
+                        accessibilityRole="link"
+                        className="min-h-11 justify-center rounded-full bg-navigation px-3"
+                      >
+                        <Text className="text-[14px] leading-[20px] text-foreground">
+                          #{tag.name}
+                        </Text>
+                      </Pressable>
+                    </Link>
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
         </ScrollView>
       )}
