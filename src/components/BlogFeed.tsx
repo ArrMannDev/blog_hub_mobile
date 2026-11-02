@@ -1,14 +1,11 @@
-import { tabBar } from "@/constants/theme";
 import { useBlogs } from "@/contexts/BlogContext";
 import { useTheme } from "@/hooks/use-theme";
-import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ArticleCard from "./ArticleCard";
 import StateMessage from "./StateMessage";
 
@@ -20,8 +17,6 @@ export default function BlogFeed({
   filtered?: boolean;
 }) {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const tabHeight = useBottomTabBarHeight();
   const { items, loading, refreshing, error, refresh, loadMore, retry } =
     useBlogs(query);
 
@@ -33,7 +28,7 @@ export default function BlogFeed({
       renderItem={({ item }) => <ArticleCard blog={item} />}
       contentContainerClassName="feed-content"
       contentContainerStyle={{
-        paddingBottom: tabHeight + Math.max(insets.bottom, tabBar.inset) + 16,
+        paddingBottom: 16,
       }}
       refreshControl={
         <RefreshControl

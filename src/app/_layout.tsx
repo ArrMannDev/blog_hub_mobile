@@ -1,3 +1,4 @@
+import { AuthContextProvider } from "@/contexts/AuthContext";
 import { BlogContextProvider } from "@/contexts/BlogContext";
 import { Lora_700Bold } from "@expo-google-fonts/lora/700Bold";
 import "@/global.css";
@@ -45,15 +46,17 @@ export default function RootLayout() {
           },
         }}
       >
-        <BlogContextProvider>
-          <StatusBar style={isDark ? "light" : "dark"} />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          />
-        </BlogContextProvider>
+        <AuthContextProvider>
+          <BlogContextProvider>
+            <StatusBar style={isDark ? "light" : "dark"} />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background },
+              }}
+            />
+          </BlogContextProvider>
+        </AuthContextProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

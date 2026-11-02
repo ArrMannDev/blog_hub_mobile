@@ -4,6 +4,7 @@ import type { Category } from "@/types/blog";
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
@@ -19,9 +20,20 @@ export function useCategories() {
       })
       .catch(() => {
         if (!controller.signal.aborted) setError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
   }, [attempt]);
 
-  return { categories, error, retry: () => setAttempt((value) => value + 1) };
+  return {
+    categories,
+    loading,
+    error,
+    retry: () => {
+      setLoading(true);
+      setAttempt((value) => value + 1);
+    },
+  };
 }

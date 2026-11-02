@@ -4,7 +4,7 @@ export const colors = {
   light: {
     background: "#F2EDE3",
     surface: "#F7F3EA",
-    navigation: "#E8E0BC",
+    navigation: "#C5D7BA",
     foreground: "#24251B",
     secondary: "#5D5C52",
     border: "#D9D6C9",
@@ -15,7 +15,7 @@ export const colors = {
   dark: {
     background: "#1D1E18",
     surface: "#272820",
-    navigation: "#343322",
+    navigation: "#2C4232",
     foreground: "#F2EDE3",
     secondary: "#C7C3B7",
     border: "#45463A",
@@ -32,9 +32,4 @@ export const fonts = {
   mono: Platform.select({ ios: "Menlo", default: "monospace" }),
 };
 
-export const tabBar = {
-  height: 72,
-  inset: 20,
-  radius: 32,
-  iconSize: 48,
-} as const;
+export const tabBar = { height: 64 } as const;

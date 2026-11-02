@@ -23,6 +23,7 @@ interface BlogFeedState {
 
 interface BlogContextType {
   feeds: Record<string, BlogFeedState>;
+  invalidate(): void;
   load(query: string, page: number, refresh?: boolean): Promise<void>;
 }
 
@@ -116,8 +117,14 @@ export const BlogContextProvider = ({
     };
   }, []);
 
+  const invalidate = () => {
+    for (const controller of requests.current.values()) controller.abort();
+    requests.current.clear();
+    setFeeds({});
+  };
+
   return (
-    <BlogContext.Provider value={{ feeds, load }}>
+    <BlogContext.Provider value={{ feeds, load, invalidate }}>
       {children}
     </BlogContext.Provider>
   );

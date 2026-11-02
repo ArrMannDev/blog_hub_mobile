@@ -124,7 +124,8 @@ function ArticleReader({ slug }: { slug: string }) {
           <ArticleImage key={blog.coverImageUrl} url={blog.coverImageUrl} />
           <View className="px-5 pt-6">
             <MarkdownBody content={blog.content} />
-            <View className="mt-4 flex-row flex-wrap gap-x-4 border-t border-border pt-3">
+            <View className="mt-4 border-t border-border pt-4">
+              <Text className="field-label">Category</Text>
               {blog.category ? (
                 <Link
                   href={{
@@ -133,36 +134,49 @@ function ArticleReader({ slug }: { slug: string }) {
                   }}
                   asChild
                 >
-                  <Pressable accessibilityRole="link" className="text-action">
-                    <Text className="text-action-label">
+                  <Pressable
+                    accessibilityRole="link"
+                    className="self-start min-h-11 justify-center rounded-full bg-navigation px-3"
+                  >
+                    <Text className="text-[14px] leading-[20px] text-foreground">
                       {blog.category.name}
                     </Text>
                   </Pressable>
                 </Link>
               ) : (
-                <Text className="py-3 text-[14px] text-secondary">
-                  {blog.categoryName}
-                </Text>
+                <Text className="form-description">{blog.categoryName}</Text>
               )}
-              {blog.tags.map((tag) => (
-                <Link
-                  key={tag.id}
-                  href={{
-                    pathname: "/explore",
-                    params: {
-                      ...(blog.category
-                        ? { category: blog.category.slug }
-                        : {}),
-                      tag: tag.slug,
-                    },
-                  }}
-                  asChild
-                >
-                  <Pressable accessibilityRole="link" className="text-action">
-                    <Text className="text-action-label">{tag.name}</Text>
-                  </Pressable>
-                </Link>
-              ))}
+              {blog.tags.length > 0 && (
+                <View className="mt-4">
+                  <Text className="field-label">Tags</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {blog.tags.map((tag) => (
+                      <Link
+                        key={tag.id}
+                        href={{
+                          pathname: "/explore",
+                          params: {
+                            ...(blog.category
+                              ? { category: blog.category.slug }
+                              : {}),
+                            tag: tag.slug,
+                          },
+                        }}
+                        asChild
+                      >
+                        <Pressable
+                          accessibilityRole="link"
+                          className="min-h-11 justify-center rounded-full bg-navigation px-3"
+                        >
+                          <Text className="text-[14px] leading-[20px] text-foreground">
+                            #{tag.name}
+                          </Text>
+                        </Pressable>
+                      </Link>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
           </View>
         </ScrollView>

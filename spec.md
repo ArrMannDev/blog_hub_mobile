@@ -349,3 +349,42 @@ Each step is separately reviewable. The user decides when implementation starts.
 - No extra discovery features are required for v1; bookmarks and follows are explicitly excluded.
 - Production Origin allowlist, native cookie support, deployed API parity, SMTP, and image Storage need integration verification.
 - No application code, dependencies, backend configuration, or database changes are part of creating this document.
+
+## 16. Authentication implementation status — 2026-10-30
+
+The user chose the existing backend authentication and authorized implementation. Added the Profile tab, email/password sign-in and registration, forgot/reset password, own-profile editing, password changes, logout, and AuthContextProvider/useAuth. The installed Clerk package is not used. Public browsing remains independent of authentication.
+
+The native Origin is the user-confirmed `https://blog-hub-frontend-one.vercel.app`; the hosted CORS preflight accepts it. Native HttpOnly cookies and in-memory access tokens follow the existing contract. Refresh is serialized, with interrupted/ambiguous rotation requiring sign-in again. SecureStore holds only a recovery marker.
+
+Unit/behavior checks and native bundle compilation do not satisfy the real-device authentication feasibility gate in A3. Cookie rotation, force-close/restart persistence, recovery email delivery, and full account flows still require testing on iOS and Android before signed-in features are considered release-ready. See README.md for setup and remaining verification.
+
+My Blogs, editor/publishing, and writer notifications have not been implemented by this step.
+## 17. Own posts on Profile — 2026-11-02
+
+The user reports checking the authentication flows and authorized the next step. Their latest navigation choice places own published posts and drafts inside Profile rather than adding a separate My Blogs tab.
+
+Profile now has a compact identity header, Edit profile, collapsible account controls, and Published/Drafts tabs. Lists use the authenticated /me/blogs endpoint, support pagination/refresh/retry, and remount on account/status changes. Drafts never use the public slug route. Published cards open the reader; each own post has an Edit action.
+
+The protected editor reads /me/blogs/:id and updates only title and Markdown content through PATCH /blogs/:id. It includes preview, validation, duplicate-submit protection, unsaved-change confirmation, and preservation of text on failure. Publication status, category, tags, and cover remain unchanged. Returning to Profile refreshes the selected list; successful edits invalidate public feed caches.
+
+Post creation, category/tag editing, cover replacement, publish/unpublish/delete actions, and notifications remain later steps. No backend or dependency changes are required for this increment.
+## 18. Publication status in the editor — 2026-11-02
+
+The editor now offers Move to draft for published posts and Publish post for drafts. Each explicit status action validates and saves current title/content together with the requested status. Ordinary Save changes omits status and preserves it. Status changes also work when the text has not changed. Successful changes invalidate public caches, and Profile refetches when the user returns.
+
+Publishing is disabled when publicationBlocked is set. A server-side publishing refusal is authoritative and leaves edits intact. Duplicate writes are prevented, failed requests are not automatically retried, and the editor uses the returned status as the new saved state. Category, tags, and cover remain unchanged.
+## 19. Create posts from Home — 2026-11-02
+
+Home now shows a + action beside Search for signed-in users. Search remains available from Home while its bottom-tab icon is hidden; the visible bottom destinations are Home and Profile. Guests cannot use the protected new-post route.
+
+The new-post form reuses the editor, with required category selection, title, Markdown content, preview, Save draft, and Publish post. A first successful save records the returned ID; later saves update that post rather than create duplicates. Successful writes invalidate public caches, and Profile refetches on return. Unknown POST outcomes disable another creation attempt and direct the user to check Profile. Definitive validation failures retain text and allow correction. Category selection is disabled while saving.
+
+Creating categories, selecting tags, cover uploads, and deleting posts remain later increments.
+## 20. Revised navigation — 2026-11-02
+
+Per the latest reference, bottom navigation now has Home, a central create action, and Profile. The + action moves out of the Home header. Guests who tap it go to sign-in; authenticated users open the existing composer. Search remains in the Home header. The attached bar replaces the floating overlay, with safe-area handling and corresponding list-padding adjustments. Post and authentication contracts are unchanged.
+## 21. Separate category and optional tags — 2026-11-02
+
+New posts now distinguish Category (one required main topic) from Tags (optional labels, up to 10). Tags load using the selected category UUID. Changing category clears selected tags; selecting the same category retains them. Loading, empty, error/retry, selection limits, and cancellation of stale category requests are handled. Create requests include selected tag UUIDs, validated against the selected category. Existing-post editing continues to preserve taxonomy.
+
+The article reader separately labels Category and Tags and presents tags with a # prefix. Both remain links to filtered discovery. Per user confirmation, pale green applies to the bottom navigation, badges, and profile avatars.

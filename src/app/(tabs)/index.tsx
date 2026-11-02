@@ -20,19 +20,21 @@ export default function HomeScreen() {
         <Text className="brand" accessibilityRole="header">
           BlogHub
         </Text>
-        <Link href="/explore" asChild>
-          <Pressable
-            className="icon-button"
-            accessibilityRole="link"
-            accessibilityLabel="Search articles"
-          >
-            <Ionicons
-              name="search-outline"
-              size={22}
-              color={colors.foreground}
-            />
-          </Pressable>
-        </Link>
+        <View className="flex-row items-center gap-1">
+          <Link href="/explore" asChild>
+            <Pressable
+              className="icon-button"
+              accessibilityRole="link"
+              accessibilityLabel="Search articles"
+            >
+              <Ionicons
+                name="search-outline"
+                size={22}
+                color={colors.foreground}
+              />
+            </Pressable>
+          </Link>
+        </View>
       </View>
       <CategoryStrip
         categories={categories}

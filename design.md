@@ -379,3 +379,27 @@ Only design.md is created for this task. spec.md remains the product-scope refer
 - Replace the heavy dark tab-bar fill with a transparent, lightly gray-tinted ultra-thin material blur. Keep intensity modest and the edge softly translucent.
 - Center each icon inside its full-height tab button, overriding the native tab item's top-aligned inner button. Raise both icon frames by 3 units for the requested optical alignment.
 - Use theme-appropriate ink icons and a subtle translucent active circle rather than a solid yellow indicator.
+
+## 19. Profile timeline — 2026-11-02
+
+Own published posts and drafts live within Profile. Use a compact avatar/name/email header, an Edit profile button, and expandable account controls. The user's posts take priority below this header, with underline-style Published/Drafts tabs and the existing editorial article rows. Own posts show a small publication/privacy label and a separate Edit post action; drafts open the private editor.
+
+Keep the cream/ink palette, Lora typography, glass navigation, safe areas, and readable spacing. The editor reuses the existing form layout with Write/Preview tabs, title/content fields, and Save changes. Use explicit font sizes and line heights to preserve compact NativeWind rendering.
+## 20. Home create action — 2026-11-02
+
+The Home header groups Search and a signed-in-only + action on the right. Use the existing 44-unit icon targets and Ionicons styling. Bottom navigation shows Home and Profile; Search is opened from the Home header. The new-post form follows the existing editor design, with wrapping category choices, a Markdown input/preview, and explicit draft/publish actions.
+## 21. Reference-style attached bottom bar — 2026-11-02
+
+The latest user reference replaces the floating glass pill with a full-width dark bottom bar. Show labeled Home and Profile destinations, with a central white rectangular + button accented by cyan and pink edges. Selected icons/labels are white; inactive ones are gray. Do not add unsupported Friends or Inbox destinations from the screenshot.
+
+Search stays in the Home header. The header + is removed. The central + opens the composer when authenticated and sign-in for guests. Explore remains a registered route for Home search; its tab slot renders the create action instead of a search icon.
+
+The bar has a 64-unit content height plus the real bottom safe-area inset. It occupies layout space rather than overlaying the feed, so lists use normal end padding without the old floating-bar clearance. This supersedes earlier glass/rounded-bar instructions.
+## 22. Theme-matched bottom navigation — 2026-11-02
+
+Keep the attached Home / + / Profile layout, but use the existing navigation color token for its surface, foreground for active icons/labels, secondary for inactive items, and border for its top edge. The center + uses a foreground-colored button with a background-colored icon. Remove the black surface and cyan/pink accents. Both light and dark appearance now follow BlogHub's warm palette.
+## 23. Pale sage and taxonomy clarity — 2026-11-02
+
+The confirmed pale green accent replaces the earlier pale-butter navigation token: light #C5D7BA, dark #2C4232. Use it for navigation, avatar backgrounds, category badges, and unselected tag pills. Keep primary reading paper #F2EDE3, ink #24251B, and the existing typography. Selected tag pills use ink fill with paper-colored text.
+
+Forms label Category · Required with one-choice controls, and Tags · Optional with multiple-choice #tag pills and a selected count. Keep the sections separated by space and a fine rule. The reader also groups Category and Tags separately. This revision supersedes earlier navigation/accent palette values.

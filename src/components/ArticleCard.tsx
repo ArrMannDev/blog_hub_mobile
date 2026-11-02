@@ -27,47 +27,94 @@ function excerptText(markdown: string): string {
     .trim();
 }
 
-export default function ArticleCard({ blog }: { blog: BlogSummary }) {
+export default function ArticleCard({
+  blog,
+  editable = false,
+}: {
+  blog: BlogSummary;
+  editable?: boolean;
+}) {
+  const editRoute = {
+    pathname: "/posts/[id]/edit",
+    params: { id: blog.id },
+  } as const;
+  const isDraft = editable && blog.status === "draft";
   return (
-    <Link
-      href={{ pathname: "/blogs/[slug]", params: { slug: blog.slug } }}
-      asChild
+    <View
+      className={editable ? "flex-none border-b border-border" : "flex-none"}
     >
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={`Read ${blog.title} by ${blog.author.displayName}`}
-        className="article-row"
+      <Link
+        href={
+          isDraft
+            ? editRoute
+            : { pathname: "/blogs/[slug]", params: { slug: blog.slug } }
+        }
+        asChild
       >
-        <View className="article-avatar" accessible={false}>
-          <Text className="article-avatar-text">
-            {initials(blog.author.displayName)}
-          </Text>
-        </View>
-        <View className="article-copy">
-          <View className="article-byline">
-            <Text className="article-author" numberOfLines={1}>
-              {blog.author.displayName}
-            </Text>
-            <Text className="article-date">{formatDate(blog.publishedAt)}</Text>
-          </View>
-          <View className="article-heading">
-            <Text className="article-title" numberOfLines={2}>
-              {blog.title}
-            </Text>
-            <Text className="article-topic" numberOfLines={1}>
-              {blog.categoryName}
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={
+            isDraft
+              ? `Edit draft ${blog.title}`
+              : `Read ${blog.title} by ${blog.author.displayName}`
+          }
+          className={editable ? "article-row border-b-0 pb-2" : "article-row"}
+        >
+          <View className="article-avatar" accessible={false}>
+            <Text className="article-avatar-text">
+              {initials(blog.author.displayName)}
             </Text>
           </View>
-          <Text className="article-excerpt" numberOfLines={3}>
-            {excerptText(blog.excerpt)}
+          <View className="article-copy">
+            <View className="article-byline">
+              <Text className="article-author" numberOfLines={1}>
+                {blog.author.displayName}
+              </Text>
+              <Text className="article-date">
+                {formatDate(isDraft ? blog.updatedAt : blog.publishedAt)}
+              </Text>
+            </View>
+            <View className="article-heading">
+              <Text className="article-title" numberOfLines={2}>
+                {blog.title}
+              </Text>
+              <Text className="article-topic" numberOfLines={1}>
+                {blog.categoryName}
+              </Text>
+            </View>
+            <Text className="article-excerpt" numberOfLines={3}>
+              {excerptText(blog.excerpt)}
+            </Text>
+            <ArticleImage
+              key={blog.coverImageUrl}
+              url={blog.coverImageUrl}
+              feed
+            />
+          </View>
+        </Pressable>
+      </Link>
+      {editable && (
+        <View className="ml-[68px] mr-4 flex-row flex-wrap items-center justify-between gap-2 pb-3">
+          <Text className="post-status">
+            {isDraft ? "Draft · Only you" : "Published"}
           </Text>
-          <ArticleImage
-            key={blog.coverImageUrl}
-            url={blog.coverImageUrl}
-            feed
-          />
+          <Link href={editRoute} asChild>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={`Edit ${blog.title}`}
+              className="text-action px-2"
+            >
+              <Text className="text-action-label">Edit post</Text>
+            </Pressable>
+          </Link>
+          {blog.publicationBlocked && (
+            <Text className="form-error w-full">
+              Publishing restricted by moderation. You can still edit this
+              draft.
+            </Text>
+          )}
         </View>
-      </Pressable>
-    </Link>
+      )}
+    </View>
   );
 }

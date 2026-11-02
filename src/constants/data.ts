@@ -6,4 +6,10 @@ export const tabs = [
     icon: "search-outline",
     activeIcon: "search",
   },
+  {
+    name: "profile",
+    title: "Profile",
+    icon: "person-outline",
+    activeIcon: "person",
+  },
 ] as const;

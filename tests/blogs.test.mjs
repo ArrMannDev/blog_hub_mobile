@@ -138,3 +138,18 @@ test("provider cleanup cancels requests and useBlogs guards missing providers", 
   app.cleanup();
   assert.equal(signal.aborted, true);
 });
+
+test("editing invalidates public caches and cancelled responses cannot repopulate them", async () => {
+  let resolve;
+  const app = setup(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  const pending = app.render().load("", 1);
+  app.render().invalidate();
+  resolve(page(["stale"]));
+  await pending;
+  assert.equal(Object.keys(app.render().feeds).length, 0);
+});

@@ -1,0 +1,865 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { runInNewContext } from "node:vm";
+import test from "node:test";
+import ts from "typescript";
+
+const require = createRequire(import.meta.url);
+const tick = () => new Promise(setImmediate);
+function load(path, mocks) {
+  const source = readFileSync(
+    new URL(`../src/${path}`, import.meta.url),
+    "utf8",
+  );
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      jsx: ts.JsxEmit.ReactJSX,
+    },
+  });
+  const module = { exports: {} };
+  runInNewContext(outputText, {
+    exports: module.exports,
+    AbortController,
+    require: (name) => (name in mocks ? mocks[name] : require(name)),
+  });
+  return module.exports;
+}
+function hooks() {
+  const states = [],
+    refs = [];
+  let stateIndex, refIndex;
+  return {
+    reset() {
+      stateIndex = refIndex = 0;
+    },
+    react: {
+      ...require("react"),
+      useState(initial) {
+        const i = stateIndex++;
+        if (!(i in states)) states[i] = initial;
+        return [
+          states[i],
+          (value) => {
+            states[i] = typeof value === "function" ? value(states[i]) : value;
+          },
+        ];
+      },
+      useRef(initial) {
+        return (refs[refIndex++] ??= { current: initial });
+      },
+      useCallback: (callback) => callback,
+    },
+  };
+}
+const blog = {
+  id: "a",
+  title: "A story",
+  content: "Original content",
+  excerpt: "Original",
+  slug: "a-story",
+  author: { id: "owner", displayName: "Writer" },
+  status: "draft",
+  publicationBlocked: false,
+  categoryName: "Life",
+  coverImageUrl: null,
+  tags: [],
+  category: null,
+  categoryId: null,
+  createdAt: "2026-01-01",
+  updatedAt: "2026-01-02",
+  publishedAt: null,
+};
+const page = (ids, number = 1, totalPages = 2) => ({
+  items: ids.map((id) => ({ ...blog, id })),
+  page: number,
+  totalPages,
+});
+function feed(fetchPage, signedIn = true) {
+  const h = hooks();
+  let effect,
+    cleanup,
+    mounted = false;
+  const module = load("hooks/use-my-blogs.ts", {
+    react: h.react,
+    "expo-router": {
+      useFocusEffect: (callback) => {
+        effect = callback;
+      },
+    },
+    "@/contexts/AuthContext": {
+      useAuth: () => ({
+        user: signedIn ? { id: "owner" } : null,
+        getAccessToken: async () => "token",
+      }),
+    },
+    "@/lib/my-blogs-api": { myBlogsApi: { list: fetchPage } },
+    "@/lib/reading": require("../src/lib/reading.ts"),
+  });
+  return {
+    render() {
+      h.reset();
+      const value = module.useMyBlogs("draft");
+      if (!mounted) {
+        mounted = true;
+        cleanup = effect();
+      }
+      return value;
+    },
+    blur() {
+      cleanup();
+    },
+    focus() {
+      cleanup = effect();
+    },
+  };
+}
+function elements(node) {
+  if (!node || typeof node !== "object") return [];
+  if (Array.isArray(node)) return node.flatMap(elements);
+  return [node, ...elements(node.props?.children)];
+}
+class ApiError extends Error {
+  constructor(status) {
+    super("Publishing is restricted");
+    this.status = status;
+  }
+}
+function editor(onSave, initialBlog = blog) {
+  const h = hooks();
+  let prevention, alert;
+  const module = load("components/BlogEditor.tsx", {
+    react: h.react,
+    "expo-router": {
+      usePreventRemove: (enabled, callback) => {
+        prevention = { enabled, callback };
+      },
+    },
+    "react-native": {
+      Alert: {
+        alert: (...args) => {
+          alert = args;
+        },
+      },
+      Keyboard: { dismiss() {} },
+      Platform: { OS: "ios" },
+      Pressable: "Pressable",
+      Text: "Text",
+      TextInput: "TextInput",
+      View: "View",
+    },
+    "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },
+    "@/lib/api": { ApiError },
+    "@/lib/blog-validation": load("lib/blog-validation.ts", {}),
+    "./ArticleImage": { __esModule: true, default: "ArticleImage" },
+    "./FormScreen": { __esModule: true, default: "FormScreen" },
+    "./MarkdownBody": { __esModule: true, default: "MarkdownBody" },
+    "./AuthFields": {
+      FormField: "FormField",
+      FormMessage: "FormMessage",
+      SubmitButton: "SubmitButton",
+    },
+  });
+  return {
+    render() {
+      h.reset();
+      return module.default({ blog: initialBlog, onSave });
+    },
+    find(type) {
+      return elements(this.render()).find((node) => node.type === type);
+    },
+    get prevention() {
+      return prevention;
+    },
+    get alert() {
+      return alert;
+    },
+  };
+}
+
+test("own-blog API uses authenticated /me routes and whitelists edits including explicit status", async () => {
+  const calls = [];
+  const { myBlogsApi } = load("lib/my-blogs-api.ts", {
+    "./api": {
+      request: async (path, options) => {
+        calls.push({ path, options });
+        return blog;
+      },
+    },
+  });
+  await myBlogsApi.list("draft", 2, "secret");
+  await myBlogsApi.detail("a/b", "secret");
+  await myBlogsApi.update(
+    "a",
+    {
+      title: "New",
+      content: "Body",
+      status: "published",
+      authorId: "other",
+      coverImageUrl: null,
+    },
+    "secret",
+  );
+  assert.equal(calls[0].path, "/me/blogs?status=draft&page=2&limit=10");
+  assert.equal(calls[0].options.headers.Authorization, "Bearer secret");
+  assert.equal(calls[1].path, "/me/blogs/a%2Fb");
+  assert.equal(calls[2].options.method, "PATCH");
+  assert.deepEqual(JSON.parse(calls[2].options.body), {
+    title: "New",
+    content: "Body",
+    status: "published",
+  });
+  await myBlogsApi.update("a", { title: "New", content: "Body" }, "secret");
+  assert.equal("status" in JSON.parse(calls[3].options.body), false);
+});
+
+test("private pagination deduplicates, retains posts on failure, retries the failed page, and refreshes on return", async () => {
+  let result = page(["a", "b"]),
+    fail = false;
+  const calls = [];
+  const app = feed(async (status, number, token) => {
+    calls.push({ status, number, token });
+    if (fail) throw new Error("offline");
+    return result;
+  });
+  app.render();
+  await tick();
+  result = page(["b", "c"], 2, 3);
+  app.render().loadMore();
+  await tick();
+  assert.equal(
+    app
+      .render()
+      .items.map(({ id }) => id)
+      .join(),
+    "a,b,c",
+  );
+  fail = true;
+  app.render().loadMore();
+  await tick();
+  assert.equal(app.render().items.length, 3);
+  assert.equal(app.render().requestedPage, 3);
+  fail = false;
+  result = page(["d"], 3, 3);
+  app.render().retry();
+  await tick();
+  assert.equal(calls.at(-1).number, 3);
+  assert.equal(calls.at(-1).status, "draft");
+  assert.equal(calls.at(-1).token, "token");
+  result = page(["fresh"]);
+  app.blur();
+  app.focus();
+  await tick();
+  assert.equal(
+    app
+      .render()
+      .items.map(({ id }) => id)
+      .join(),
+    "fresh",
+  );
+});
+
+test("leaving the private feed cancels late results; guests never request drafts", async () => {
+  let resolve, signal;
+  const app = feed((_status, _page, _token, abortSignal) => {
+    signal = abortSignal;
+    return new Promise((done) => {
+      resolve = done;
+    });
+  });
+  app.render();
+  await tick();
+  app.blur();
+  assert.equal(signal.aborted, true);
+  resolve(page(["private"]));
+  await tick();
+  assert.equal(app.render().items.length, 0);
+  let calls = 0;
+  const guest = feed(async () => {
+    calls++;
+  }, false);
+  guest.render();
+  await tick();
+  assert.equal(calls, 0);
+});
+
+test("refresh supersedes an older private response and repeated pagination does not duplicate requests", async () => {
+  const pending = [];
+  const app = feed(
+    (_status, _page, _token, signal) =>
+      new Promise((resolve) => pending.push({ resolve, signal })),
+  );
+  app.render();
+  await tick();
+  app.render().refresh();
+  await tick();
+  assert.equal(pending[0].signal.aborted, true);
+  pending[1].resolve(page(["new"]));
+  await tick();
+  pending[0].resolve(page(["old"]));
+  await tick();
+  assert.equal(app.render().items[0].id, "new");
+  const value = app.render();
+  value.loadMore();
+  value.loadMore();
+  await tick();
+  assert.equal(pending.length, 3);
+  app.blur();
+  pending[2].resolve(page([]));
+  await tick();
+});
+
+test("post validation counts Unicode characters and rejects blank or oversized edits", () => {
+  const { validateBlogEdits } = load("lib/blog-validation.ts", {});
+  assert.equal(
+    validateBlogEdits({ title: "😀".repeat(200), content: "Body" }).title,
+    undefined,
+  );
+  assert.ok(
+    validateBlogEdits({ title: "😀".repeat(201), content: "Body" }).title,
+  );
+  assert.ok(validateBlogEdits({ title: "   ", content: "\n\t" }).content);
+  assert.equal(
+    validateBlogEdits({ title: "Title", content: "x".repeat(100000) }).content,
+    undefined,
+  );
+  assert.ok(
+    validateBlogEdits({ title: "Title", content: "x".repeat(100001) }).content,
+  );
+});
+
+test("saving trims only the title, blocks duplicate writes, and clears unsaved state on success", async () => {
+  let resolve;
+  const calls = [];
+  const app = editor((edits) => {
+    calls.push(edits);
+    return new Promise((done) => {
+      resolve = done;
+    });
+  });
+  app.find("FormField").props.onChangeText(" New title ");
+  app.find("TextInput").props.onChangeText("\nBody with whitespace\n");
+  const button = app.find("SubmitButton");
+  const pending = button.props.onPress();
+  await button.props.onPress();
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].title, "New title");
+  assert.equal(calls[0].content, "\nBody with whitespace\n");
+  assert.equal(app.find("SubmitButton").props.busy, true);
+  resolve({ ...blog, ...calls[0] });
+  await pending;
+  assert.equal(app.find("SubmitButton").props.disabled, true);
+  assert.equal(app.prevention.enabled, false);
+});
+
+test("failed saves preserve editor text and remain protected from accidental back navigation", async () => {
+  const app = editor(async () => {
+    throw new Error("offline");
+  });
+  app.find("FormField").props.onChangeText("Changed title");
+  await app.find("SubmitButton").props.onPress();
+  assert.equal(app.find("FormField").props.value, "Changed title");
+  assert.equal(app.find("TextInput").props.value, blog.content);
+  assert.equal(app.prevention.enabled, true);
+  let repeated = 0;
+  app.prevention.callback({ repeat: () => repeated++ });
+  assert.equal(app.alert[0], "Discard changes?");
+  assert.equal(repeated, 0);
+  app.alert[2].find(({ text }) => text === "Discard").onPress();
+  app.render();
+  assert.equal(app.prevention.enabled, false);
+  assert.equal(repeated, 1);
+});
+
+test("draft cards open the private editor while published cards retain their public reader", () => {
+  const { default: ArticleCard } = load("components/ArticleCard.tsx", {
+    "expo-router": { Link: "Link" },
+    "react-native": { Pressable: "Pressable", Text: "Text", View: "View" },
+    "react-native-markdown-display": {
+      MarkdownIt: () => ({ parse: () => [] }),
+    },
+    "@/lib/reading": require("../src/lib/reading.ts"),
+    "./ArticleImage": { __esModule: true, default: "ArticleImage" },
+  });
+  let links = elements(ArticleCard({ blog, editable: true })).filter(
+    ({ type }) => type === "Link",
+  );
+  assert.equal(links[0].props.href.pathname, "/posts/[id]/edit");
+  assert.equal(links[1].props.href.params.id, blog.id);
+  links = elements(
+    ArticleCard({ blog: { ...blog, status: "published" }, editable: true }),
+  ).filter(({ type }) => type === "Link");
+  assert.equal(links[0].props.href.pathname, "/blogs/[slug]");
+  assert.equal(links[1].props.href.pathname, "/posts/[id]/edit");
+});
+
+test("the editor requires sign-in and never renders another account's post", async () => {
+  const h = hooks();
+  let user = null,
+    effect,
+    started = false;
+  const calls = [];
+  class ApiError extends Error {
+    constructor(status) {
+      super("Unavailable");
+      this.status = status;
+    }
+  }
+  const id = "11111111-1111-4111-8111-111111111111";
+  const route = load("app/posts/[id]/edit.tsx", {
+    react: {
+      ...h.react,
+      useContext: () => ({ invalidate() {} }),
+      useEffect: (callback) => {
+        effect = callback;
+      },
+    },
+    "expo-router": {
+      Redirect: "Redirect",
+      router: { replace() {} },
+      useLocalSearchParams: () => ({ id }),
+    },
+    "react-native": { ActivityIndicator: "ActivityIndicator" },
+    "@/components/BlogEditor": { __esModule: true, default: "BlogEditor" },
+    "@/components/FormScreen": { __esModule: true, default: "FormScreen" },
+    "@/components/StateMessage": { __esModule: true, default: "StateMessage" },
+    "@/contexts/AuthContext": {
+      useAuth: () => ({
+        user,
+        isRestoring: false,
+        getAccessToken: async () => "token",
+      }),
+    },
+    "@/contexts/BlogContext": { BlogContext: {} },
+    "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },
+    "@/lib/api": { ApiError },
+    "@/lib/my-blogs-api": {
+      myBlogsApi: {
+        detail: async (...args) => {
+          calls.push(args);
+          return { ...blog, author: { id: "someone-else" } };
+        },
+      },
+    },
+  });
+  assert.equal(route.default().type, "Redirect");
+  assert.equal(calls.length, 0);
+  user = { id: "owner" };
+  const inner = route.default();
+  function render() {
+    h.reset();
+    const tree = inner.type(inner.props);
+    if (!started) {
+      started = true;
+      effect();
+    }
+    return tree;
+  }
+  render();
+  await tick();
+  const tree = elements(render());
+  assert.equal(calls[0][0], id);
+  assert.equal(
+    tree.some(({ type }) => type === "BlogEditor"),
+    false,
+  );
+  assert.equal(
+    tree.find(({ type }) => type === "StateMessage").props.title,
+    "This post isn't available",
+  );
+});
+
+test("switching profile accounts remounts the private timeline and guests have no timeline", () => {
+  let user = null;
+  const { default: Profile } = load("app/(tabs)/profile.tsx", {
+    "@expo/vector-icons/Ionicons": { __esModule: true, default: "Ionicons" },
+    "expo-router": { Link: "Link" },
+    "expo-router/js-tabs": { useBottomTabBarHeight: () => 72 },
+    "react-native": {
+      ActivityIndicator: "ActivityIndicator",
+      Pressable: "Pressable",
+      ScrollView: "ScrollView",
+      Text: "Text",
+      View: "View",
+    },
+    "react-native-safe-area-context": {
+      useSafeAreaInsets: () => ({ bottom: 0 }),
+    },
+    "@/components/AuthFields": { FormMessage: "FormMessage" },
+    "@/components/ProfilePosts": { __esModule: true, default: "ProfilePosts" },
+    "@/components/Screen": { __esModule: true, default: "Screen" },
+    "@/constants/theme": { tabBar: { inset: 20 } },
+    "@/contexts/AuthContext": {
+      useAuth: () => ({ user, isRestoring: false, message: null }),
+    },
+    "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },
+  });
+  assert.equal(
+    elements(Profile()).some(({ type }) => type === "ProfilePosts"),
+    false,
+  );
+  user = { id: "account-a" };
+  assert.equal(
+    elements(Profile()).find(({ type }) => type === "ProfilePosts").key,
+    "account-a",
+  );
+  user = { id: "account-b" };
+  assert.equal(
+    elements(Profile()).find(({ type }) => type === "ProfilePosts").key,
+    "account-b",
+  );
+});
+
+test("published posts move to drafts and drafts publish without requiring content edits", async () => {
+  const calls = [];
+  const initial = { ...blog, status: "published" };
+  const app = editor(async (edits) => {
+    calls.push(edits);
+    return { ...initial, ...edits };
+  }, initial);
+  const statusAction = () =>
+    elements(app.render()).find(
+      (node) =>
+        node.type === "Pressable" &&
+        node.props.className.includes("secondary-button"),
+    );
+  await statusAction().props.onPress();
+  assert.equal(calls[0].status, "draft");
+  assert.equal(app.prevention.enabled, false);
+  assert.equal(
+    elements(statusAction()).find(({ type }) => type === "Text").props.children,
+    "Publish post",
+  );
+  await statusAction().props.onPress();
+  assert.equal(calls[1].status, "published");
+  assert.equal(
+    elements(statusAction()).find(({ type }) => type === "Text").props.children,
+    "Move to draft",
+  );
+});
+
+test("moderation blocks publishing and a server refusal preserves edits and disables republishing", async () => {
+  let calls = 0;
+  const save = async () => {
+    calls++;
+    throw new ApiError(403);
+  };
+  const blocked = editor(save, { ...blog, publicationBlocked: true });
+  const action = (app) =>
+    elements(app.render()).find(
+      (node) =>
+        node.type === "Pressable" &&
+        node.props.className.includes("secondary-button"),
+    );
+  assert.equal(action(blocked).props.disabled, true);
+  await action(blocked).props.onPress();
+  assert.equal(calls, 0);
+  const app = editor(save);
+  app.find("FormField").props.onChangeText("My updated title");
+  await action(app).props.onPress();
+  assert.equal(calls, 1);
+  assert.equal(action(app).props.disabled, true);
+  assert.equal(app.find("FormField").props.value, "My updated title");
+  assert.equal(app.prevention.enabled, true);
+  assert.equal(app.find("SubmitButton").props.disabled, false);
+});
+
+test("the blank editor creates a private draft and becomes an existing-post editor after saving", async () => {
+  const calls = [];
+  const app = editor(async (edits) => {
+    calls.push(edits);
+    return { ...blog, ...edits };
+  }, null);
+  app.find("FormField").props.onChangeText("My first post");
+  app.find("TextInput").props.onChangeText("My story");
+  assert.equal(app.find("SubmitButton").props.label, "Save draft");
+  await app.find("SubmitButton").props.onPress();
+  assert.equal(calls[0].status, "draft");
+  assert.equal(app.find("SubmitButton").props.label, "Save changes");
+  assert.equal(app.prevention.enabled, false);
+});
+
+test("create requests whitelist the required post fields and authenticate", async () => {
+  let options;
+  const { myBlogsApi } = load("lib/my-blogs-api.ts", {
+    "./api": {
+      request: async (path, init) => {
+        assert.equal(path, "/blogs");
+        options = init;
+        return blog;
+      },
+    },
+  });
+  await myBlogsApi.create(
+    {
+      title: "New",
+      content: "Body",
+      categoryId: "category",
+      status: "published",
+      authorId: "forged",
+      tagIds: ["tag-a"],
+    },
+    "token",
+  );
+  assert.equal(options.method, "POST");
+  assert.equal(options.headers.Authorization, "Bearer token");
+  assert.deepEqual(JSON.parse(options.body), {
+    title: "New",
+    content: "Body",
+    categoryId: "category",
+    status: "published",
+    tagIds: ["tag-a"],
+  });
+});
+
+function composer(createFailure, availableTags = []) {
+  const h = hooks();
+  const inputs = [];
+  let user = null,
+    creates = 0,
+    updates = 0;
+  const route = load("app/posts/new.tsx", {
+    react: { ...h.react, useContext: () => ({ invalidate() {} }) },
+    "expo-router": { Link: "Link", Redirect: "Redirect" },
+    "react-native": {
+      ActivityIndicator: "ActivityIndicator",
+      Pressable: "Pressable",
+      Text: "Text",
+      View: "View",
+    },
+    "@/components/BlogEditor": { __esModule: true, default: "BlogEditor" },
+    "@/components/AuthFields": { FormMessage: "FormMessage" },
+    "@/components/FormScreen": { __esModule: true, default: "FormScreen" },
+    "@/contexts/AuthContext": {
+      useAuth: () => ({
+        user,
+        isRestoring: false,
+        getAccessToken: async () => "token",
+      }),
+    },
+    "@/contexts/BlogContext": { BlogContext: {} },
+    "@/hooks/use-tags": {
+      useTags: (categoryId) => ({
+        tags: availableTags.filter((tag) => tag.categoryId === categoryId),
+        loading: false,
+        error: false,
+        retry() {},
+      }),
+    },
+    "@/hooks/use-categories": {
+      useCategories: () => ({
+        categories: [
+          { id: "category", name: "Life" },
+          { id: "other", name: "Travel" },
+        ],
+        loading: false,
+        error: false,
+      }),
+    },
+    "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },
+    "@/lib/api": { ApiError },
+    "@/lib/my-blogs-api": {
+      myBlogsApi: {
+        create: async (input) => {
+          creates++;
+          inputs.push(input);
+          if (createFailure) throw createFailure;
+          return { ...blog, ...input };
+        },
+        update: async (_id, input) => {
+          updates++;
+          return { ...blog, ...input };
+        },
+      },
+    },
+  });
+  assert.equal(route.default().type, "Redirect");
+  user = { id: "owner" };
+  const inner = route.default();
+  return {
+    render() {
+      h.reset();
+      return inner.type(inner.props);
+    },
+    select(id = "category") {
+      elements(this.render().props.children(false))
+        .find(
+          (node) =>
+            node.props?.accessibilityRole === "radio" && node.key === id,
+        )
+        .props.onPress();
+    },
+    get inputs() {
+      return inputs;
+    },
+    get creates() {
+      return creates;
+    },
+    get updates() {
+      return updates;
+    },
+  };
+}
+
+test("the composer requires a category and later saves update the created ID", async () => {
+  const app = composer();
+  await assert.rejects(
+    app.render().props.onSave({ title: "New", content: "Body" }),
+    /category/,
+  );
+  assert.equal(app.creates, 0);
+  app.select();
+  await app
+    .render()
+    .props.onSave({ title: "New", content: "Body", status: "draft" });
+  await app
+    .render()
+    .props.onSave({ title: "Changed", content: "Body", status: "published" });
+  assert.equal(app.creates, 1);
+  assert.equal(app.updates, 1);
+});
+
+test("uncertain create outcomes prevent another POST; definitive validation failures allow correction", async () => {
+  const app = composer(new Error("lost response"));
+  app.select();
+  await assert.rejects(
+    app.render().props.onSave({ title: "New", content: "Body" }),
+    /Check your Profile/,
+  );
+  assert.equal(app.render().props.disabled, true);
+  await assert.rejects(
+    app.render().props.onSave({ title: "New", content: "Body" }),
+    /Check your Profile/,
+  );
+  assert.equal(app.creates, 1);
+  const invalid = composer(new ApiError(400));
+  invalid.select();
+  await assert.rejects(
+    invalid.render().props.onSave({ title: "New", content: "Body" }),
+  );
+  await assert.rejects(
+    invalid.render().props.onSave({ title: "Fixed", content: "Body" }),
+  );
+  assert.equal(invalid.creates, 2);
+  assert.equal(invalid.render().props.disabled, false);
+});
+
+test("Home keeps search in the header and leaves creation to the bottom bar", () => {
+  const h = hooks();
+  let signedIn = false;
+  const { default: Home } = load("app/(tabs)/index.tsx", {
+    react: h.react,
+    "@expo/vector-icons/Ionicons": { __esModule: true, default: "Ionicons" },
+    "expo-router": { Link: "Link" },
+    "react-native": { Pressable: "Pressable", Text: "Text", View: "View" },
+    "@/components/Screen": { __esModule: true, default: "Screen" },
+    "@/components/BlogFeed": { __esModule: true, default: "BlogFeed" },
+    "@/components/CategoryStrip": {
+      __esModule: true,
+      default: "CategoryStrip",
+    },
+    "@/hooks/use-categories": {
+      useCategories: () => ({ categories: [], error: false }),
+    },
+    "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },
+    "@/contexts/AuthContext": {
+      useAuth: () => ({ isAuthenticated: signedIn }),
+    },
+    "@/lib/reading": require("../src/lib/reading.ts"),
+  });
+  const links = () => {
+    h.reset();
+    return elements(Home())
+      .filter((node) => node.type === "Link")
+      .map((node) => node.props.href);
+  };
+  assert.ok(links().includes("/explore"));
+  assert.equal(links().includes("/posts/new"), false);
+  signedIn = true;
+  assert.equal(links().includes("/posts/new"), false);
+});
+
+test("new posts submit only the selected category's tags and clear tags when category changes", async () => {
+  const app = composer(undefined, [
+    { id: "tag-a", categoryId: "category", name: "Ideas" },
+    { id: "tag-b", categoryId: "other", name: "Places" },
+  ]);
+  app.select();
+  const choices = () =>
+    elements(app.render().props.children(false)).filter(
+      (node) => node.props?.accessibilityRole === "checkbox",
+    );
+  choices()[0].props.onPress();
+  assert.equal(choices()[0].props.accessibilityState.checked, true);
+  app.select();
+  assert.equal(choices()[0].props.accessibilityState.checked, true);
+  app.select("other");
+  assert.equal(choices()[0].key, "tag-b");
+  assert.equal(choices()[0].props.accessibilityState.checked, false);
+  choices()[0].props.onPress();
+  await app
+    .render()
+    .props.onSave({ title: "New", content: "Body", status: "draft" });
+  assert.equal(app.inputs[0].categoryId, "other");
+  assert.equal(app.inputs[0].tagIds.join(), "tag-b");
+});
+
+test("tag selection caps at ten while selected tags can still be removed", () => {
+  const app = composer(
+    undefined,
+    Array.from({ length: 11 }, (_, i) => ({
+      id: `tag-${i}`,
+      categoryId: "category",
+      name: `Tag ${i}`,
+    })),
+  );
+  app.select();
+  const choices = () =>
+    elements(app.render().props.children(false)).filter(
+      (node) => node.props?.accessibilityRole === "checkbox",
+    );
+  for (let i = 0; i < 10; i++) choices()[i].props.onPress();
+  assert.equal(choices()[10].props.disabled, true);
+  assert.equal(choices()[0].props.disabled, false);
+  choices()[0].props.onPress();
+  assert.equal(choices()[10].props.disabled, false);
+});
+
+test("tag requests cancel old categories and late results cannot replace current tags", async () => {
+  const h = hooks();
+  const requests = [];
+  let effect, cleanup;
+  const { useTags } = load("hooks/use-tags.ts", {
+    react: {
+      ...h.react,
+      useEffect: (callback) => {
+        effect = callback;
+      },
+    },
+    "@/lib/api": {
+      api: {
+        tags: (categoryId, signal) =>
+          new Promise((resolve) =>
+            requests.push({ categoryId, signal, resolve }),
+          ),
+      },
+    },
+  });
+  const render = (id) => {
+    h.reset();
+    return useTags(id);
+  };
+  assert.equal(render("a").loading, true);
+  cleanup = effect();
+  cleanup();
+  assert.equal(render("b").tags.length, 0);
+  cleanup = effect();
+  requests[1].resolve([{ id: "b-tag", categoryId: "b" }]);
+  await tick();
+  requests[0].resolve([{ id: "a-tag", categoryId: "a" }]);
+  await tick();
+  assert.equal(requests[0].signal.aborted, true);
+  assert.equal(render("b").tags[0].id, "b-tag");
+  cleanup();
+});

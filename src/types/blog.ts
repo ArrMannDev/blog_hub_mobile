@@ -8,6 +8,20 @@ export interface Tag extends Category {
   categoryId: string;
 }
 
+export type BlogStatus = "draft" | "published";
+
+export interface BlogEdits {
+  status?: BlogStatus;
+  title: string;
+  content: string;
+}
+
+export interface NewBlogInput extends BlogEdits {
+  tagIds?: string[];
+  categoryId: string;
+  status: BlogStatus;
+}
+
 export interface BlogSummary {
   id: string;
   title: string;
@@ -19,6 +33,10 @@ export interface BlogSummary {
   tags: Tag[];
   coverImageUrl: string | null;
   publishedAt: string | null;
+  status: BlogStatus;
+  publicationBlocked: boolean;
+  createdAt: string;
+  updatedAt: string;
   excerpt: string;
 }
 

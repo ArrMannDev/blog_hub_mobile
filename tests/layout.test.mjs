@@ -67,6 +67,8 @@ test("native text line heights cannot be multiplied by the font size", () => {
     ["article-author", 20],
     ["article-date", 20],
     ["category-label", 20],
+    ["post-status", 18],
+    ["post-content-input", 26],
   ]) {
     const [, rules] = stylesheet.s.find(([key]) => key === name);
     const dynamicHeight = rules

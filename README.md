@@ -54,3 +54,48 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## BlogHub mobile authentication
+
+The Profile icon is the third destination in the floating tab bar. Guests can keep reading or open sign-in, registration, and password recovery. Signed-in users can view/edit their profile, change their password, and sign out.
+
+`src/contexts/AuthContext.tsx` exports `AuthContext`, `AuthContextProvider`, and `useAuth()`. UI components call the hook; `src/lib/auth-api.ts` owns endpoint calls. Protected features can obtain a current bearer token with `await getAccessToken()` from the context.
+
+Authentication uses the existing BlogHub backend, not Clerk. Access tokens live only in memory. Expo's native fetch implementation manages the backend's HttpOnly refresh cookie. SecureStore contains only a session recovery marker, never a password, access token, or copied cookie.
+
+Native cookie requests send the confirmed allowed Origin `https://blog-hub-frontend-one.vercel.app`. To use another backend-allowed origin, set `EXPO_PUBLIC_AUTH_ORIGIN` in `.env.local` and restart Expo. This is public configuration, not a secret. Browser clients use their real browser Origin; adding a header cannot bypass browser CORS or SameSite cookie rules.
+
+Refresh calls share one in-flight request. The recovery marker is set before rotation; failed or interrupted rotation requires a fresh sign-in instead of replaying a possibly consumed cookie. Login and account mutations cannot submit concurrently, and write requests are not automatically retried. A failed logout keeps the account visible and offers retry rather than claiming that its server session was revoked.
+
+Registration does not sign in automatically. Password changes and resets clear local authentication. Google sign-in, writing screens, and notifications remain separate implementation steps.
+
+### Verification still required on devices
+
+The public CORS preflight confirms the supplied Origin, but does not prove login/cookie behavior. No production account was created or changed for testing.
+
+On both iOS and Android, check sign-in with an existing test account, background/resume, refresh after access-token expiry, app force-close/restart, sign-out, and restart after sign-out. Also check recovery email delivery, profile/email/password changes, keyboard behavior, large text, and dark mode. Cookie retention/rotation across an immediate force-close needs particular attention. Do not call persistent native authentication verified until these checks pass.
+
+Browser preview is not evidence of native cookie persistence. Cross-site browser refresh may be blocked by the backend's SameSite=Lax policy. The current development web preview also shows server-rendering/styling problems; this mobile change does not change web deployment configuration.
+
+Run `npm test`, `npm run lint -- --no-cache`, and `npx tsc --noEmit` for the local checks.
+## Own posts and editing
+
+Profile now shows only the current account's Published and Draft posts, using the protected /me/blogs endpoints. Open a draft or tap Edit post to edit the title/content and preview Markdown. Save changes preserves publication status, category, tags, and cover. Profile refreshes when returning from the editor; public feed caches are invalidated after successful edits.
+
+Account actions remain available under Edit profile and Account above the timeline. Private list state is discarded when signing out or switching accounts. Failed saves keep editor text, and leaving with unsaved changes asks for confirmation. Force-closing the app does not save unsaved edits.
+
+The user reports testing the earlier authentication flows. The new profile/edit flows still need a phone check: Published/Drafts filtering, another account's isolation, pagination, editing both statuses, back/swipe-back protection, save failure/retry, and return-to-profile refresh. Creation, cover replacement, publication controls, and deletion are not included in this increment.
+### Publishing and moving back to drafts
+
+Edit post now includes Publish post for a draft and Move to draft for a published article. These actions save the current title/content and change status in one request; Save changes alone preserves status. After moving a post to drafts, find it under Profile > Drafts. Moderation-blocked drafts can still be edited but cannot be published through this editor. New-post creation, cover replacement, and deletion remain separate steps.
+### Creating a post
+
+Sign in, then tap + beside Search on Home. Enter a title and content, choose an existing category, and select Save draft or Publish post. Later saves update the created post using its returned ID. Check Profile > Drafts or Published to find it. Search remains in the Home header; the bottom bar now shows Home and Profile.
+
+If a creation request's outcome is uncertain, the form preserves text and disables another POST. Check Profile before starting another creation to avoid duplicates. Category/tag creation, cover uploads, and post deletion are not part of this step.
+### Updated bottom navigation
+
+The latest design moves + into the center of an attached dark bottom bar between Home and Profile. Sign in, then tap the center + to create a post. Guests are sent to sign-in. Search stays at the top of Home; the header no longer has a + action. This replaces the earlier floating glass bar and header-create instructions.
+### Categories and tags
+
+Choose one required category when creating a post. Tags are optional; select up to 10 from that category. Changing the category clears its tag selections. The article reader labels Category and Tags separately. The navigation, badges, and avatar backgrounds now use pale sage green with warm cream and dark ink.
