@@ -19,12 +19,13 @@ export class ApiError extends Error {
 export async function request<T>(
   path: string,
   options: RequestInit = {},
+  timeoutMs = 25_000,
 ): Promise<T> {
   const controller = new AbortController();
   const abort = () => controller.abort();
   options.signal?.addEventListener("abort", abort, { once: true });
   if (options.signal?.aborted) controller.abort();
-  const timeout = setTimeout(abort, 25_000);
+  const timeout = setTimeout(abort, timeoutMs);
   try {
     const response = await fetch(`${API_ORIGIN}/api/v1${path}`, {
       credentials: "omit",
@@ -53,6 +54,10 @@ export async function request<T>(
       if (response.status === 503)
         message =
           "This service is temporarily unavailable. Please try again later.";
+      if (response.status === 413)
+        message = "Choose a cover image no larger than 5 MB.";
+      if (response.status === 415)
+        message = "Choose a JPEG, PNG, or WebP cover image.";
       throw new ApiError(response.status, message);
     }
     if (response.status === 204) return undefined as T;

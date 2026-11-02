@@ -13,7 +13,6 @@ import { useTheme } from "@/hooks/use-theme";
 import { validateBlogEdits } from "@/lib/blog-validation";
 import { ApiError } from "@/lib/api";
 import type { Blog, BlogEdits, BlogStatus } from "@/types/blog";
-import ArticleImage from "./ArticleImage";
 import { FormField, FormMessage, SubmitButton } from "./AuthFields";
 import FormScreen from "./FormScreen";
 import MarkdownBody from "./MarkdownBody";
@@ -23,10 +22,12 @@ export default function BlogEditor({
   onSave,
   children,
   disabled = false,
+  extraDirty = false,
 }: {
   blog?: Blog;
   children?: (saving: boolean) => ReactNode;
   disabled?: boolean;
+  extraDirty?: boolean;
   onSave(edits: BlogEdits): Promise<Blog>;
 }) {
   const { colors } = useTheme();
@@ -43,7 +44,9 @@ export default function BlogEditor({
   const [discarded, setDiscarded] = useState(false);
   const pending = useRef(false);
   const dirty =
-    title.trim() !== (saved?.title ?? "") || content !== (saved?.content ?? "");
+    title.trim() !== (saved?.title ?? "") ||
+    content !== (saved?.content ?? "") ||
+    extraDirty;
 
   usePreventRemove(saving || (dirty && !discarded), ({ repeat }) => {
     if (pending.current) {
@@ -145,7 +148,7 @@ export default function BlogEditor({
           setDiscarded(false);
         }}
       />
-      {!saved && children?.(saving)}
+      {children?.(saving)}
       <View
         className="mb-4 flex-row gap-6 border-b border-border"
         accessibilityRole="tablist"
@@ -175,7 +178,6 @@ export default function BlogEditor({
           <Text className="reader-title mb-4" accessibilityRole="header">
             {title}
           </Text>
-          <ArticleImage url={saved?.coverImageUrl ?? null} />
           <View className="mt-4">
             <MarkdownBody content={content} />
           </View>
@@ -207,7 +209,7 @@ export default function BlogEditor({
           )}
           <Text className="form-description mt-2">
             {saved
-              ? "Your category, tags, and cover stay unchanged. Status actions also save your edits."
+              ? "Status actions also save your text, category, tags, and cover changes."
               : "Markdown is supported. Save a draft to keep this post private, or publish when you are ready."}
           </Text>
         </View>

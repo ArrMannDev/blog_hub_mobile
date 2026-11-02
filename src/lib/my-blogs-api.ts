@@ -6,6 +6,7 @@ import type {
   NewBlogInput,
 } from "@/types/blog";
 import { request } from "./api";
+import { postBody } from "./post-body";
 
 export const myBlogsApi = {
   setStatus: (id: string, status: BlogStatus, token: string) =>
@@ -22,21 +23,21 @@ export const myBlogsApi = {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     }),
-  create: (input: NewBlogInput, token: string) =>
-    request<Blog>("/blogs", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+  create: (input: NewBlogInput, token: string) => {
+    const payload = postBody(input);
+    return request<Blog>(
+      "/blogs",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...payload.headers,
+        },
+        body: payload.body,
       },
-      body: JSON.stringify({
-        title: input.title,
-        content: input.content,
-        categoryId: input.categoryId,
-        ...(input.tagIds?.length ? { tagIds: input.tagIds } : {}),
-        status: input.status,
-      }),
-    }),
+      input.image ? 90_000 : 25_000,
+    );
+  },
   list: (
     status: BlogStatus,
     page: number,
@@ -52,18 +53,20 @@ export const myBlogsApi = {
       headers: { Authorization: `Bearer ${token}` },
       signal,
     }),
-  update: (id: string, edits: BlogEdits, token: string) =>
-    request<Blog>(`/blogs/${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+  update: (id: string, edits: BlogEdits, token: string) => {
+    const payload = postBody(edits);
+    return request<Blog>(
+      `/blogs/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...payload.headers,
+        },
+        // Publication status changes only when the user explicitly chooses it.
+        body: payload.body,
       },
-      // Publication status changes only when the user explicitly chooses it.
-      body: JSON.stringify({
-        title: edits.title,
-        content: edits.content,
-        ...(edits.status ? { status: edits.status } : {}),
-      }),
-    }),
+      edits.image ? 90_000 : 25_000,
+    );
+  },
 };

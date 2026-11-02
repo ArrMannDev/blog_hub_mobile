@@ -88,6 +88,36 @@ export default function ProfileHeader({ user }: { user: AuthUser }) {
           </Text>
         </Pressable>
       </View>
+      <View className="mt-3 flex-row flex-wrap gap-3">
+        {(
+          [
+            {
+              href: "/chats/inbox",
+              label: "Inbox",
+              icon: "chatbubble-ellipses-outline",
+            },
+            {
+              href: "/notifications",
+              label: "Notifications",
+              icon: "notifications-outline",
+            },
+            { href: "/history", label: "Post history", icon: "time-outline" },
+          ] as const
+        ).map(({ href, label, icon }) => (
+          <Link key={href} href={href} asChild>
+            <Pressable
+              accessibilityRole="link"
+              disabled={busy}
+              className="secondary-button flex-row gap-2"
+            >
+              <Ionicons name={icon} size={19} color={colors.foreground} />
+              <Text className="text-[14px] leading-[20px] text-foreground">
+                {label}
+              </Text>
+            </Pressable>
+          </Link>
+        ))}
+      </View>
       {!!message && (
         <View className="mt-4">
           <FormMessage>{message}</FormMessage>

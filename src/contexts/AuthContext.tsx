@@ -3,12 +3,12 @@ import { authApi } from "@/lib/auth-api";
 import { authStorage } from "@/lib/auth-storage";
 import type { AuthTokens, AuthUser, ProfileInput } from "@/types/auth";
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useRef,
-    useState,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 import { AppState } from "react-native";
 
@@ -26,6 +26,7 @@ interface AuthContextType {
   updateProfile(input: ProfileInput): Promise<void>;
   changePassword(currentPassword: string, newPassword: string): Promise<void>;
   getAccessToken(): Promise<string>;
+  checkSession(): Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -125,6 +126,12 @@ export const AuthContextProvider = ({
       setBusy(false);
     }
   }, []);
+
+  const checkSession = useCallback(async () => {
+    await run(async () => {
+      setUser(await loadProfile());
+    });
+  }, [loadProfile, run]);
 
   useEffect(() => {
     let mounted = true;
@@ -249,6 +256,7 @@ export const AuthContextProvider = ({
         updateProfile,
         changePassword,
         getAccessToken,
+        checkSession,
       }}
     >
       {children}

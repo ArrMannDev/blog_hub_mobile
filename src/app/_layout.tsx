@@ -1,5 +1,6 @@
 import { AuthContextProvider } from "@/contexts/AuthContext";
 import { BlogContextProvider } from "@/contexts/BlogContext";
+import { ChatContextProvider } from "@/contexts/ChatContext";
 import { Lora_700Bold } from "@expo-google-fonts/lora/700Bold";
 import "@/global.css";
 import { Lora_400Regular } from "@expo-google-fonts/lora/400Regular";
@@ -48,13 +49,15 @@ export default function RootLayout() {
       >
         <AuthContextProvider>
           <BlogContextProvider>
-            <StatusBar style={isDark ? "light" : "dark"} />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.background },
-              }}
-            />
+            <ChatContextProvider>
+              <StatusBar style={isDark ? "light" : "dark"} />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: colors.background },
+                }}
+              />
+            </ChatContextProvider>
           </BlogContextProvider>
         </AuthContextProvider>
       </ThemeProvider>

@@ -141,10 +141,7 @@ function ArticleReader({ slug }: { slug: string }) {
               )}
             </View>
             <View className="mt-3">
-              <AuthorLine
-                name={blog.author.displayName}
-                date={blog.publishedAt}
-              />
+              <AuthorLine author={blog.author} date={blog.publishedAt} />
             </View>
           </View>
           <ArticleImage key={blog.coverImageUrl} url={blog.coverImageUrl} />

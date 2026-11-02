@@ -1,15 +1,14 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator } from "react-native";
-import BlogEditor from "@/components/BlogEditor";
+import PostComposer from "@/components/PostComposer";
 import FormScreen from "@/components/FormScreen";
 import StateMessage from "@/components/StateMessage";
 import { useAuth } from "@/contexts/AuthContext";
-import { BlogContext } from "@/contexts/BlogContext";
 import { useTheme } from "@/hooks/use-theme";
 import { ApiError } from "@/lib/api";
 import { myBlogsApi } from "@/lib/my-blogs-api";
-import type { Blog, BlogEdits } from "@/types/blog";
+import type { Blog } from "@/types/blog";
 
 export default function EditPostScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,7 +31,6 @@ export default function EditPostScreen() {
 
 function OwnedPost({ id, userId }: { id: string; userId: string }) {
   const { getAccessToken } = useAuth();
-  const cache = useContext(BlogContext);
   const { colors } = useTheme();
   const [blog, setBlog] = useState<Blog | null>(null);
   const [error, setError] = useState("");
@@ -65,13 +63,7 @@ function OwnedPost({ id, userId }: { id: string; userId: string }) {
     return () => controller.abort();
   }, [getAccessToken, id, userId, attempt]);
 
-  async function save(edits: BlogEdits) {
-    const result = await myBlogsApi.update(id, edits, await getAccessToken());
-    cache?.invalidate();
-    return result;
-  }
-
-  if (blog) return <BlogEditor blog={blog} onSave={save} />;
+  if (blog) return <PostComposer blog={blog} />;
   return (
     <FormScreen title="Edit post" description="Make changes to your article.">
       {error ? (

@@ -417,3 +417,21 @@ Use actual backend semantics: permanent deletion with confirmation, publishing, 
 ## 26. Categories and tags management — 2026-11-02
 
 Keep the existing cream/sage palette, reading typography, safe-area toolbar, and shared form fields/buttons. Present categories as a compact scrolling list with a Manage tags link; show tags with a # prefix on their category's screen. Place Add category/Add tag above the list, and Rename only below entries created by the signed-in user, including admins. Authors see Delete only on their own entries; admins see Delete on every entry. State that taxonomy is shared and explain permissions. Use a focused name form for creation/renaming and an explicit native confirmation describing category deletion's cascading effects. Provide access through Profile → Account and a text link above the composer's category selector.
+
+## 27. Covers and account activity — 2026-11-02
+
+Reuse the cream paper, sage accents, Lora headings, shared controls, and safe-area toolbar. The composer displays a bounded cover preview with Choose/Change, Remove, and Undo actions above the existing category/tag sections. Keep the cover limit and public-draft visibility understandable beside the chooser. Show category and tag controls on existing posts as well as new ones; use the same compact badges and selection states.
+
+Profile exposes Notifications and Post history as labeled buttons. Activity lists use compact rows, fine dividers, readable dates, and accessible explicit actions. Show unread status in text as well as a dot. History details group Before and After values in surface panels; long text expands on request. Deleted-post snapshots are visibly read-only. Loading, retry, empty states, pagination, and bottom safe areas use the existing patterns. Do not add unsupported push, restore, or cross-user history controls.
+
+## 28. Inbox and conversation screens — 2026-11-02
+
+Place the outlined message icon directly after Search in Home's right-hand action group, with the existing accessible icon touch target. Inbox also has a labeled Profile entry. Message author sits below article author/date metadata and is omitted on the signed-in user's own posts.
+
+Reuse cream surfaces, sage outgoing bubbles/avatar circles/unread badges, dark ink text, and subtle rules. Inbox rows show initials, author name, last-message preview, date, and unread count. Conversation headers truncate long names and show the current chat connection/typing state; no recipient online-presence claim is made. New messages appear at the bottom, older pages load above. Incoming messages use the surface token and outgoing messages use sage, with compact spacing and readable timestamps. Deleted messages remain muted placeholders. Failed sends expose a labeled Retry action; sent messages use long press/accessibility Delete with confirmation.
+
+Keep the multiline composer and send button above the keyboard and device safe area. Provide a visible 2,000-character count, connection recovery, history refresh/retry, loading and empty states. Keep the current bottom navigation structure. Do not imitate unsupported group, attachment, message-editing, or push features.
+
+## 29. Author profile popup — 2026-11-02
+
+Make author initials and names accessible profile triggers, with at least 44-unit touch targets. Keep the article link separate from author actions and preserve compact avatar/byline alignment. Replace the inline Message author text link with a cream bottom sheet containing a larger sage initials avatar, the author's name, and a labeled Send message action. Include a dim backdrop, visible close button, Android Back dismissal, safe-area padding, scroll support, busy/error states, and no self-message action. Tapping your own author identity shows This is you. Feed and reader reuse the same popup; no separate public profile screen is invented.

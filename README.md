@@ -107,3 +107,31 @@ Tap … beside an own post to open Edit post, Publish/Move to draft, or Delete p
 
 Open **Profile → Account → Categories and tags**, or **Manage categories and tags** in the post composer. Open a category to manage its tags. Authors can add entries and rename/delete their own. Admins can rename only their own entries and delete any entry. Direct rename links verify ownership from the API before showing a form, including for admins. Deleting a category also deletes all child tags, while preserving posts as Uncategorized. Renames change public filter slugs. Lists refresh on return; the composer reloads category/tag choices. Redeploy the backend with creator-or-admin deletion permissions. No new dependencies are required.
 
+
+### Cover images and post metadata
+
+Create/Edit now share a composer for category, tags, and cover images. Choose a JPEG, PNG, or WebP image up to 5 MiB, replace it, remove it, or undo a cover change before saving. Cover changes and tag/category changes can be saved without editing text. Uploads preserve selections on errors; updates preserve metadata that was not changed. Draft covers are public, and removing a cover does not erase the old storage file.
+
+The SDK-compatible expo-image-picker dependency is installed. Restart Expo (`npx expo start --clear`). If using a custom development client, rebuild it for the added native module and permission configuration. Photo access, device uploads, safe areas, and keyboard behavior need a real-phone check.
+
+### Notifications and post history
+
+Open **Profile → Notifications** for moderation notices and Mark as read/Mark all as read. Deleted-post notices have no live-post link. Open **Profile → Post history** for your recorded actions, before/after values, and deletion snapshots. History starts at recorded changes rather than creation; another admin's moderation actions appear in your notifications, not your action history. These features use existing protected backend endpoints and do not provide push notifications or restoration.
+
+### Backend URL configuration
+
+Copy `.env.example` to `.env` when setting up a new checkout. Set `EXPO_PUBLIC_API_URL` to the backend origin (without `/api/v1`). API requests and legacy image paths use this value; no backend host is hardcoded in app source. Reload the app after editing it. Set the same variable in your build environment for hosted builds. `.env` files are ignored by Git; `.env.example` is the tracked template. Public Expo variables are included in the app, so never put secret credentials there. Tests load the template using Node's `--env-file` option and need no private `.env` file.
+
+### Native upload compatibility fix
+
+Expo SDK 58's expo/fetch rejects React Native FormData entries shaped as `{ uri, name, type }` before sending the request. Native cover uploads now append `new File(uri)` from expo-file-system; web still appends the picker's browser File. The existing Expo-bundled FileSystem module is declared directly without upgrading it. Regression checks use the installed Expo multipart serializer, confirm the old URI entry fails, and verify the replacement serializes image bytes and headers. Retry on a phone after reloading the app and reopening the composer; no production post was created by verification.
+
+### Private chat
+
+Tap the message icon to the right of Search on Home, or **Profile → Inbox**. Tap an author's avatar or name in the feed or article details, then **Send message** in the profile popup to start/reopen a conversation. Sign-in is required and you cannot message yourself. Inbox shows previews and unread counts; conversations support real-time plaintext messages, older history, Sent/Read status, typing, and explicit retry after failed/unconfirmed sends. Hold your own sent message to delete it for everyone; a deleted placeholder remains. Admins cannot delete another sender's messages.
+
+The connection uses `EXPO_PUBLIC_API_URL` with namespace `/chat` (outside `/api/v1`) and the existing BlogHub access token. Native handshakes reuse the allowed auth Origin. The new ChatContext/useChat and conversation/message hooks manage lifecycle and private state. The transport does not buffer offline sends; Retry keeps the same message ID to prevent duplicates. Drafts and pending messages are held in memory only and are cleared on logout/account change or app restart. Reconnection refreshes canonical history rather than relying on missed socket events.
+
+Installed Socket.IO client and SDK-compatible expo-crypto. Restart Expo; rebuild a custom development client if it lacks the added crypto module. The backend needs its existing chat and message-deletion migrations applied; none were run on production here. Deployed REST paths and rejection of an invalid socket token were verified. A local Socket.IO integration check used simulated users without production messages.
+
+For device verification, use two accounts: open an author popup and Send message, send in both directions, confirm Inbox counts/read status/typing, disconnect and retry a send, then delete your own message and confirm the placeholder on both phones. Check keyboard/safe-area behavior and logout/account switching. Real-account messaging and deployed migration readiness were not verified automatically.

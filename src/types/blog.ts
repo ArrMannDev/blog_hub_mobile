@@ -14,6 +14,18 @@ export interface BlogEdits {
   status?: BlogStatus;
   title: string;
   content: string;
+  categoryId?: string;
+  tagIds?: string[];
+  coverImageUrl?: string | null;
+  image?: CoverUpload;
+}
+
+export interface CoverUpload {
+  uri: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  file?: File;
 }
 
 export interface NewBlogInput extends BlogEdits {

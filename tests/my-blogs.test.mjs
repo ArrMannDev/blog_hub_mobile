@@ -23,7 +23,18 @@ function load(path, mocks) {
     exports: module.exports,
     AbortController,
     Error,
-    require: (name) => (name in mocks ? mocks[name] : require(name)),
+    FormData,
+    Blob,
+    require: (name) => {
+      if (name in mocks) return mocks[name];
+      if (name === "./post-body") return load("lib/post-body.ts", mocks);
+      if (name === "expo-file-system") return { File: class {} };
+      if (name === "@/components/PostComposer")
+        return load("components/PostComposer.tsx", mocks);
+      if (name === "./CoverPicker")
+        return { __esModule: true, default: "CoverPicker" };
+      return require(name);
+    },
   });
   return module.exports;
 }
@@ -127,7 +138,7 @@ class ApiError extends Error {
     this.status = status;
   }
 }
-function editor(onSave, initialBlog = blog) {
+function editor(onSave, initialBlog = blog, extraDirty = false) {
   const h = hooks();
   let prevention, alert;
   const module = load("components/BlogEditor.tsx", {
@@ -165,7 +176,7 @@ function editor(onSave, initialBlog = blog) {
   return {
     render() {
       h.reset();
-      return module.default({ blog: initialBlog, onSave });
+      return module.default({ blog: initialBlog, onSave, extraDirty });
     },
     find(type) {
       return elements(this.render()).find((node) => node.type === type);
@@ -210,6 +221,7 @@ test("own-blog API uses authenticated /me routes and whitelists edits including 
     title: "New",
     content: "Body",
     status: "published",
+    coverImageUrl: null,
   });
   await myBlogsApi.update("a", { title: "New", content: "Body" }, "secret");
   assert.equal("status" in JSON.parse(calls[3].options.body), false);
@@ -374,8 +386,11 @@ test("failed saves preserve editor text and remain protected from accidental bac
 });
 
 test("own cards open the correct destination and manage uses a separate ellipsis button", () => {
+  const h = hooks();
   let managed = 0;
   const { default: ArticleCard } = load("components/ArticleCard.tsx", {
+    react: h.react,
+    "./AuthorProfileSheet": { __esModule: true, default: "AuthorProfileSheet" },
     "@expo/vector-icons/Ionicons": { __esModule: true, default: "Ionicons" },
     "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },
     "expo-router": { Link: "Link" },
@@ -386,7 +401,11 @@ test("own cards open the correct destination and manage uses a separate ellipsis
     "@/lib/reading": require("../src/lib/reading.ts"),
     "./ArticleImage": { __esModule: true, default: "ArticleImage" },
   });
-  const tree = ArticleCard({ blog, editable: true, onManage: () => managed++ });
+  const render = (props) => {
+    h.reset();
+    return ArticleCard(props);
+  };
+  const tree = render({ blog, editable: true, onManage: () => managed++ });
   const links = elements(tree).filter(({ type }) => type === "Link");
   assert.equal(links.length, 1);
   assert.equal(links[0].props.href.pathname, "/posts/[id]/edit");
@@ -396,7 +415,28 @@ test("own cards open the correct destination and manage uses a separate ellipsis
   menu.props.onPress();
   assert.equal(managed, 1);
   assert.equal(elements(links[0]).includes(menu), false);
-  const publicTree = ArticleCard({ blog: { ...blog, status: "published" } });
+  const authorButtons = elements(tree).filter(
+    (node) =>
+      node.props?.accessibilityLabel ===
+      `View ${blog.author.displayName}'s profile`,
+  );
+  assert.equal(authorButtons.length, 2);
+  assert.ok(
+    authorButtons.every((button) => !elements(links[0]).includes(button)),
+  );
+  authorButtons[0].props.onPress();
+  const sheet = elements(render({ blog })).find(
+    (node) => node.type === "AuthorProfileSheet",
+  );
+  assert.equal(sheet.props.author.id, blog.author.id);
+  sheet.props.onClose();
+  assert.equal(
+    elements(render({ blog })).some(
+      (node) => node.type === "AuthorProfileSheet",
+    ),
+    false,
+  );
+  const publicTree = render({ blog: { ...blog, status: "published" } });
   assert.equal(
     elements(publicTree).some(
       (node) => node.props?.accessibilityLabel === `Manage ${blog.title}`,
@@ -436,7 +476,7 @@ test("the editor requires sign-in and never renders another account's post", asy
       useLocalSearchParams: () => ({ id }),
     },
     "react-native": { ActivityIndicator: "ActivityIndicator" },
-    "@/components/BlogEditor": { __esModule: true, default: "BlogEditor" },
+    "@/components/PostComposer": { __esModule: true, default: "PostComposer" },
     "@/components/FormScreen": { __esModule: true, default: "FormScreen" },
     "@/components/StateMessage": { __esModule: true, default: "StateMessage" },
     "@/contexts/AuthContext": {
@@ -476,7 +516,7 @@ test("the editor requires sign-in and never renders another account's post", asy
   const tree = elements(render());
   assert.equal(calls[0][0], id);
   assert.equal(
-    tree.some(({ type }) => type === "BlogEditor"),
+    tree.some(({ type }) => type === "PostComposer"),
     false,
   );
   assert.equal(
@@ -628,9 +668,11 @@ test("create requests whitelist the required post fields and authenticate", asyn
   });
 });
 
-function composer(createFailure, availableTags = []) {
+function composer(createFailure, availableTags = [], initialBlog) {
   const h = hooks();
   const inputs = [];
+  const edits = [];
+  let serverBlog = initialBlog || blog;
   let user = null,
     creates = 0,
     updates = 0;
@@ -680,11 +722,26 @@ function composer(createFailure, availableTags = []) {
           creates++;
           inputs.push(input);
           if (createFailure) throw createFailure;
-          return { ...blog, ...input };
+          serverBlog = {
+            ...blog,
+            ...input,
+            tags: availableTags.filter((tag) => input.tagIds?.includes(tag.id)),
+          };
+          return serverBlog;
         },
         update: async (_id, input) => {
           updates++;
-          return { ...blog, ...input };
+          edits.push(input);
+          if (createFailure) throw createFailure;
+          serverBlog = {
+            ...serverBlog,
+            ...input,
+            tags:
+              input.tagIds === undefined
+                ? serverBlog.tags
+                : availableTags.filter((tag) => input.tagIds.includes(tag.id)),
+          };
+          return serverBlog;
         },
       },
     },
@@ -695,7 +752,10 @@ function composer(createFailure, availableTags = []) {
   return {
     render() {
       h.reset();
-      return inner.type(inner.props);
+      return inner.type({
+        ...inner.props,
+        ...(initialBlog ? { blog: initialBlog } : {}),
+      });
     },
     select(id = "category") {
       elements(this.render().props.children(false))
@@ -707,6 +767,9 @@ function composer(createFailure, availableTags = []) {
     },
     get inputs() {
       return inputs;
+    },
+    get edits() {
+      return edits;
     },
     get creates() {
       return creates;
@@ -839,6 +902,106 @@ test("tag selection caps at ten while selected tags can still be removed", () =>
   assert.equal(choices()[0].props.disabled, false);
   choices()[0].props.onPress();
   assert.equal(choices()[10].props.disabled, false);
+});
+
+test("existing posts can change category, clear tags and remove a cover without losing other fields", async () => {
+  const original = {
+    ...blog,
+    categoryId: "category",
+    tags: [{ id: "tag-a", categoryId: "category" }],
+    coverImageUrl: "https://example.com/cover.jpg",
+  };
+  const app = composer(undefined, original.tags, original);
+  assert.equal(app.render().props.extraDirty, false);
+  app.select("other");
+  const cover = elements(app.render().props.children(false)).find(
+    (node) => node.type === "CoverPicker",
+  );
+  cover.props.onChange(null);
+  assert.equal(app.render().props.extraDirty, true);
+  await app
+    .render()
+    .props.onSave({ title: original.title, content: original.content });
+  assert.equal(app.edits[0].tagIds.length, 0);
+  assert.equal(app.edits[0].categoryId, "other");
+  assert.equal(app.edits[0].coverImageUrl, null);
+  assert.equal(app.edits[0].status, undefined);
+  assert.equal(app.render().props.extraDirty, false);
+});
+
+test("metadata-only changes enable saving and participate in the unsaved-change guard", async () => {
+  const calls = [];
+  const app = editor(
+    async (input) => {
+      calls.push(input);
+      return blog;
+    },
+    blog,
+    true,
+  );
+  assert.equal(app.find("SubmitButton").props.disabled, false);
+  assert.equal(app.prevention.enabled, true);
+  await app.find("SubmitButton").props.onPress();
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].title, blog.title);
+  assert.equal(calls[0].status, undefined);
+});
+
+test("tags deleted while editing can be explicitly removed before saving metadata", async () => {
+  const original = {
+    ...blog,
+    categoryId: "category",
+    tags: [{ id: "removed", categoryId: "category" }],
+  };
+  const app = composer(undefined, [], original);
+  const clear = elements(app.render().props.children(false)).find(
+    (node) =>
+      node.type === "Pressable" &&
+      elements(node).some(
+        (child) => child.props?.children === "Remove unavailable tags",
+      ),
+  );
+  clear.props.onPress();
+  assert.equal(app.render().props.extraDirty, true);
+  await app
+    .render()
+    .props.onSave({ title: original.title, content: original.content });
+  assert.equal(app.edits[0].tagIds.length, 0);
+});
+
+test("failed metadata uploads remain selected; ordinary text edits omit unchanged metadata", async () => {
+  const original = { ...blog, categoryId: "category" };
+  const image = {
+    uri: "file:///cover.jpg",
+    mimeType: "image/jpeg",
+    size: 100,
+    name: "cover.jpg",
+  };
+  const failed = composer(new Error("offline"), [], original);
+  elements(failed.render().props.children(false))
+    .find((node) => node.type === "CoverPicker")
+    .props.onChange(image);
+  await assert.rejects(
+    failed.render().props.onSave({ title: "New", content: "Body" }),
+    /offline/,
+  );
+  assert.equal(failed.render().props.extraDirty, true);
+  assert.equal(
+    elements(failed.render().props.children(false)).find(
+      (node) => node.type === "CoverPicker",
+    ).props.value,
+    image,
+  );
+  const app = composer(undefined, [], original);
+  await app.render().props.onSave({ title: "New", content: "Body" });
+  for (const field of [
+    "categoryId",
+    "tagIds",
+    "image",
+    "coverImageUrl",
+    "status",
+  ])
+    assert.equal(field in app.edits[0], false);
 });
 
 test("tag requests cancel old categories and late results cannot replace current tags", async () => {

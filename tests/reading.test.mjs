@@ -12,7 +12,7 @@ import {
 test("image URLs resolve legacy paths and reject executable schemes", () => {
   assert.equal(
     imageUrl("/images/cover.jpg"),
-    "https://blog-hub-backend-cnzm.onrender.com/images/cover.jpg",
+    `${new URL(process.env.EXPO_PUBLIC_API_URL).origin}/images/cover.jpg`,
   );
   assert.equal(
     imageUrl("https://example.com/cover.png"),

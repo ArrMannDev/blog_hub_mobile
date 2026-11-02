@@ -34,6 +34,19 @@ export default function HomeScreen() {
               />
             </Pressable>
           </Link>
+          <Link href="/chats/inbox" asChild>
+            <Pressable
+              className="icon-button"
+              accessibilityRole="link"
+              accessibilityLabel="Open messages"
+            >
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={22}
+                color={colors.foreground}
+              />
+            </Pressable>
+          </Link>
         </View>
       </View>
       <CategoryStrip

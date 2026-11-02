@@ -2,16 +2,16 @@ import { Platform } from "react-native";
 import type { AuthTokens, AuthUser, ProfileInput } from "@/types/auth";
 import { request } from "./api";
 
-const nativeOrigin =
+export const AUTH_ORIGIN =
   process.env.EXPO_PUBLIC_AUTH_ORIGIN ??
   "https://blog-hub-frontend-one.vercel.app";
 
 function cookieOptions(): RequestInit {
   if (Platform.OS === "web") return { credentials: "include" };
-  const origin = new URL(nativeOrigin.trim());
+  const origin = new URL(AUTH_ORIGIN.trim());
   if (
     !["https:", "http:"].includes(origin.protocol) ||
-    origin.origin !== nativeOrigin.trim()
+    origin.origin !== AUTH_ORIGIN.trim()
   )
     throw new Error(
       "Sign-in isn't configured correctly. Please contact support.",

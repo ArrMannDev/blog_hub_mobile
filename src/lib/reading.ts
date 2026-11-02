@@ -1,4 +1,13 @@
-export const API_ORIGIN = "https://blog-hub-backend-cnzm.onrender.com";
+export const API_ORIGIN = process.env.EXPO_PUBLIC_API_URL?.trim().replace(
+  /\/+$/,
+  "",
+);
+
+if (!API_ORIGIN) {
+  throw new Error(
+    "Set EXPO_PUBLIC_API_URL in the project's .env file, then reload the app.",
+  );
+}
 
 export function imageUrl(value: string | null): string | undefined {
   if (!value) return undefined;

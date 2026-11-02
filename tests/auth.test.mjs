@@ -467,6 +467,29 @@ test("resuming a revoked account clears the profile after one failed refresh", a
   assert.equal(app.writes.at(-1), "signed-out");
 });
 
+test("chat session revalidation clears revoked authentication instead of reconnecting with stale credentials", async () => {
+  let revoked = false;
+  const app = setup({
+    api: {
+      me: () => {
+        if (revoked) throw new ApiError(401);
+        return user;
+      },
+      refresh: () => {
+        throw new ApiError(401);
+      },
+    },
+  });
+  app.render();
+  await tick();
+  await app.render().login(user.email, "password");
+  revoked = true;
+  await assert.rejects(app.render().checkSession());
+  assert.equal(app.render().user, null);
+  assert.equal(app.render().busy, false);
+  assert.equal(app.calls.filter(({ name }) => name === "refresh").length, 1);
+});
+
 test("the attached bottom bar has labeled tabs and an authenticated center create action", () => {
   function Tabs() {}
   Tabs.Screen = () => null;

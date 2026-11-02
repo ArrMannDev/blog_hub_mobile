@@ -35,6 +35,14 @@
       ],
       "expo-font",
       "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a cover image for your BlogHub post.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
       "expo-secure-store",
       "expo-status-bar",
       "expo-web-browser"
