@@ -1,13 +1,13 @@
-import { Link, Redirect } from "expo-router";
-import { useRef, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrivatePage } from "@/hooks/use-private-page";
 import { activityApi } from "@/lib/activity-api";
-import { formatDate } from "@/lib/reading";
 import { actionLabels } from "@/lib/history";
-import PrivateActivityList from "./PrivateActivityList";
+import { formatDate } from "@/lib/reading";
+import { Link, Redirect } from "expo-router";
+import { useRef, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { FormMessage } from "./AuthFields";
+import PrivateActivityList from "./PrivateActivityList";
 import Screen from "./Screen";
 
 export default function AccountActivity({
@@ -76,14 +76,14 @@ function Notifications() {
             {!item.readAt && (
               <View className="h-2 w-2 rounded-full bg-foreground" />
             )}
-            <Text className="min-w-0 flex-1 text-[16px] leading-[24px] font-semibold text-foreground">
+            <Text className="min-w-0 flex-1 text-[16px] leading-6 text-foreground">
               {item.blogTitle}
             </Text>
           </View>
-          <Text className="mt-2 text-[15px] leading-[23px] text-foreground">
+          <Text className="mt-2 text-[15px] leading-5 text-foreground">
             {item.message}
           </Text>
-          <Text className="mt-2 text-[13px] leading-[20px] text-secondary">
+          <Text className="mt-2 text-[13px] leading-5 text-secondary">
             {formatDate(item.createdAt)} · {item.readAt ? "Read" : "Unread"}
           </Text>
           <View className="flex-row flex-wrap gap-4">
@@ -158,10 +158,10 @@ function History() {
             accessibilityRole="link"
             className="border-b border-border py-4"
           >
-            <Text className="text-[13px] leading-[20px] text-secondary">
+            <Text className="text-[13px] leading-5 text-secondary">
               {actionLabels[item.action]} · {formatDate(item.createdAt)}
             </Text>
-            <Text className="mt-1 font-title text-[19px] leading-[27px] text-foreground">
+            <Text className="mt-1 font-title text-[19px] leading-6.75 text-foreground">
               {item.blogTitle}
             </Text>
             <Text className="text-action-label mt-2">View changes</Text>
