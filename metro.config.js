@@ -3,6 +3,8 @@ const { withNativewind } = require("nativewind/metro");
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = withNativewind(getDefaultConfig(__dirname));
+if (!config.resolver.assetExts.includes("wasm"))
+  config.resolver.assetExts.push("wasm");
 const resolveWithNativewind = config.resolver.resolveRequest;
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {

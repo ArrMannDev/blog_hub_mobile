@@ -8,6 +8,7 @@ import {
 } from "react";
 import { api } from "@/lib/api";
 import { mergeBlogs } from "@/lib/reading";
+import { subscribePostChanges } from "@/lib/post-events";
 import type { BlogSummary } from "@/types/blog";
 
 interface BlogFeedState {
@@ -117,11 +118,19 @@ export const BlogContextProvider = ({
     };
   }, []);
 
-  const invalidate = () => {
+  const invalidate = useCallback(() => {
     for (const controller of requests.current.values()) controller.abort();
     requests.current.clear();
     setFeeds({});
-  };
+  }, []);
+
+  useEffect(
+    () =>
+      subscribePostChanges((_userId, server) => {
+        if (server) invalidate();
+      }),
+    [invalidate],
+  );
 
   return (
     <BlogContext.Provider value={{ feeds, load, invalidate }}>

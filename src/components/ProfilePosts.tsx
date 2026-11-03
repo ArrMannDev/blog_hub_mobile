@@ -15,6 +15,7 @@ import {
 import ArticleCard from "./ArticleCard";
 import ProfileHeader from "./ProfileHeader";
 import StateMessage from "./StateMessage";
+import PostSyncStatus from "./PostSyncStatus";
 
 export default function ProfilePosts({ user }: { user: AuthUser }) {
   const [status, setStatus] = useState<BlogStatus>("published");
@@ -79,6 +80,7 @@ function PostList({
         ListHeaderComponent={
           <>
             <ProfileHeader user={user} />
+            <PostSyncStatus />
             <View className="border-t border-border px-5 pt-5">
               <View
                 className="mt-3 flex-row gap-6 border-b border-border"

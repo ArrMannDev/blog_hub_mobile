@@ -9,19 +9,26 @@ import { FormMessage } from "./AuthFields";
 export default function CoverPicker({
   value,
   existingUrl,
+  existingLocal = false,
   disabled,
   onChange,
   onPicking,
 }: {
   value: CoverUpload | null | undefined;
   existingUrl: string | null;
+  existingLocal?: boolean;
   disabled: boolean;
   onChange(value: CoverUpload | null | undefined): void;
   onPicking(value: boolean): void;
 }) {
   const [error, setError] = useState("");
   const pending = useRef(false);
-  const uri = value === undefined ? imageUrl(existingUrl) : value?.uri;
+  const uri =
+    value === undefined
+      ? existingLocal && existingUrl?.startsWith("file://")
+        ? existingUrl
+        : imageUrl(existingUrl)
+      : value?.uri;
 
   async function choose() {
     if (disabled || pending.current) return;

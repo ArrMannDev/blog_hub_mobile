@@ -16,7 +16,7 @@ runInNewContext(source, {
   module: configModule,
   require: (name) =>
     name === "expo/metro-config"
-      ? { getDefaultConfig: () => ({ resolver: {} }) }
+      ? { getDefaultConfig: () => ({ resolver: { assetExts: ["png"] } }) }
       : require(name),
 });
 const resolve = configModule.exports.resolver.resolveRequest;

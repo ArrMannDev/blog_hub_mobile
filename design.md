@@ -435,3 +435,10 @@ Keep the multiline composer and send button above the keyboard and device safe a
 ## 29. Author profile popup — 2026-11-02
 
 Make author initials and names accessible profile triggers, with at least 44-unit touch targets. Keep the article link separate from author actions and preserve compact avatar/byline alignment. Replace the inline Message author text link with a cream bottom sheet containing a larger sage initials avatar, the author's name, and a labeled Send message action. Include a dim backdrop, visible close button, Android Back dismissal, safe-area padding, scroll support, busy/error states, and no self-message action. Tapping your own author identity shows This is you. Feed and reader reuse the same popup; no separate public profile screen is invented.
+
+
+## 30. Offline post feedback — 2026-11-03
+
+Label the composer category section Required to upload and explain that offline saves can omit it. Missing metadata must not block local saving. Show Choose a category to upload on pending profile cards and a Choose category link in the sync panel that opens the existing editor. Keep the intended draft/publish label and never claim public publication before confirmation. Reuse existing surface, text, button, and safe-area styles.
+
+Preserve the cream/sage post form and profile. A local save says Saved on this phone and never claims publication or removal from public reading until confirmed by the backend. Profile cards show Pending upload, Upload failed, or Sync conflict beside the intended draft/publish state, and open the private editor for unsynced posts. Use a compact surface panel above the profile post tabs for pending changes, retry, and readable issue descriptions. Failed deletions remain accessible through this panel even though the post is hidden. Discarding local changes requires an explicit confirmation and loads the server copy. Native file previews are accepted only for explicitly local post/cover props; public backend image URLs keep the existing HTTP(S) restrictions.

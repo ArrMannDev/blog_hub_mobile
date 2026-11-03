@@ -46,7 +46,10 @@ export default function ArticleCard({
     pathname: "/posts/[id]/edit",
     params: { id: blog.id },
   } as const;
-  const isDraft = editable && blog.status === "draft";
+  const isDraft =
+    editable &&
+    (blog.status === "draft" ||
+      (!!blog.syncStatus && blog.syncStatus !== "synced"));
   return (
     <View
       className={
@@ -112,7 +115,17 @@ export default function ArticleCard({
               {editable && (
                 <View className="mt-2 items-start">
                   <Text className="post-status">
-                    {isDraft ? "Draft · Only you" : "Published"}
+                    {blog.syncStatus === "conflict"
+                      ? "Sync conflict · Review changes"
+                      : blog.syncStatus === "pending" && !blog.categoryId
+                        ? `${blog.status === "draft" ? "Draft" : "Publish requested"} · Choose a category to upload`
+                        : blog.syncStatus === "failed"
+                          ? "Upload failed · Saved on phone"
+                          : blog.syncStatus === "pending"
+                            ? `${blog.status === "draft" ? "Draft" : "Publish requested"} · Pending upload`
+                            : blog.status === "draft"
+                              ? "Draft · Only you"
+                              : "Published"}
                   </Text>
                   {blog.publicationBlocked && (
                     <Text className="form-error mt-2">
@@ -128,6 +141,9 @@ export default function ArticleCard({
               <ArticleImage
                 key={blog.coverImageUrl}
                 url={blog.coverImageUrl}
+                local={
+                  editable && !!blog.syncStatus && blog.syncStatus !== "synced"
+                }
                 feed
               />
             </Pressable>

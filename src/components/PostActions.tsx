@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BlogContext } from "@/contexts/BlogContext";
 import { useTheme } from "@/hooks/use-theme";
 import { ApiError } from "@/lib/api";
-import { myBlogsApi } from "@/lib/my-blogs-api";
+import { postCrud } from "@/lib/post-crud";
 import type { BlogSummary } from "@/types/blog";
 import { FormMessage } from "./AuthFields";
 
@@ -29,7 +29,7 @@ export default function PostActions({
   onClose(): void;
   onChanged(id: string): void;
 }) {
-  const { getAccessToken } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const cache = useContext(BlogContext);
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -43,26 +43,29 @@ export default function PostActions({
     if (!pending.current) onClose();
   }
 
-  async function update(action: "status" | "delete") {
+  async function update(action: "status" | "delete" | "discard") {
     if (pending.current || (action === "status" && !isPublished && blocked))
       return;
     pending.current = true;
     setBusy(true);
     setError("");
     try {
-      const token = await getAccessToken();
-      if (action === "delete") {
+      if (!user) throw new Error("Sign in before changing a post.");
+      if (action === "discard") {
+        await postCrud.discardLocal(user, blog, getAccessToken);
+      } else if (action === "delete") {
         try {
-          await myBlogsApi.remove(blog.id, token);
+          await postCrud.remove(user, blog, getAccessToken);
         } catch (failure) {
           if (!(failure instanceof ApiError) || failure.status !== 404)
             throw failure;
         }
       } else {
-        await myBlogsApi.setStatus(
-          blog.id,
+        await postCrud.setStatus(
+          user,
+          blog,
           isPublished ? "draft" : "published",
-          token,
+          getAccessToken,
         );
       }
       cache?.invalidate();
@@ -104,6 +107,24 @@ export default function PostActions({
         },
       ]);
     }
+  }
+
+  function confirmDiscard() {
+    const message =
+      "Discard the changes saved on this phone and load the server copy? Unsynced changes will be lost.";
+    if (Platform.OS === "web") {
+      if (window.confirm(message)) void update("discard");
+    } else
+      Alert.alert("Discard local changes?", message, [
+        { text: "Keep changes", style: "cancel" },
+        {
+          text: "Discard local changes",
+          style: "destructive",
+          onPress: () => {
+            void update("discard");
+          },
+        },
+      ]);
   }
 
   return (
@@ -209,6 +230,29 @@ export default function PostActions({
                   </Text>
                 </View>
               </Pressable>
+              {(blog.syncStatus === "failed" ||
+                blog.syncStatus === "conflict") && (
+                <Pressable
+                  className="post-action-row border-t border-border"
+                  accessibilityRole="button"
+                  disabled={busy}
+                  onPress={confirmDiscard}
+                >
+                  <Ionicons
+                    name="refresh-outline"
+                    size={25}
+                    color={colors.foreground}
+                  />
+                  <View className="min-w-0 flex-1">
+                    <Text className="post-action-label">
+                      Discard local changes
+                    </Text>
+                    <Text className="form-description">
+                      Review your saved text first. This loads the server copy.
+                    </Text>
+                  </View>
+                </Pressable>
+              )}
               <Pressable
                 className="post-action-row border-t border-border"
                 accessibilityRole="button"

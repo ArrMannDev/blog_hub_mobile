@@ -1,5 +1,7 @@
 # Welcome to your Expo app 👋
 
+Post CRUD supports online API saves and native offline SQLite saves with automatic upload. See [OFFLINE_POSTS.md](./OFFLINE_POSTS.md) for backend rollout, behavior, and device testing. The backend migration and deployment are required before queued changes can upload.
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started

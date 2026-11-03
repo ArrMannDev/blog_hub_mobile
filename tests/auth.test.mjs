@@ -21,7 +21,19 @@ function load(path, mocks = {}, globals = {}) {
   const module = { exports: {} };
   runInNewContext(outputText, {
     exports: module.exports,
-    require: (name) => (name in mocks ? mocks[name] : require(name)),
+    require: (name) =>
+      name in mocks
+        ? mocks[name]
+        : name === "@/lib/connectivity"
+          ? { hasInternet: async () => true }
+          : name === "@/lib/offline-profile"
+            ? {
+                offlineProfile: {
+                  read: async () => null,
+                  write: async () => {},
+                },
+              }
+            : require(name),
     URL,
     TextEncoder,
     AbortController,
@@ -52,6 +64,8 @@ function setup({
   marker = null,
   api: overrides = {},
   storageFailure = false,
+  online = true,
+  cachedUser = null,
 } = {}) {
   const calls = [];
   const writes = [];
@@ -129,6 +143,15 @@ function setup({
       },
       "@/lib/api": { ApiError },
       "@/lib/auth-api": { authApi: api },
+      "@/lib/connectivity": { hasInternet: async () => online },
+      "@/lib/offline-profile": {
+        offlineProfile: {
+          read: async () => cachedUser,
+          write: async (value) => {
+            cachedUser = value;
+          },
+        },
+      },
       "@/lib/auth-storage": {
         authStorage: {
           read: async () => marker,
@@ -143,6 +166,9 @@ function setup({
     { Date: { now: () => now } },
   );
   const app = {
+    set online(value) {
+      online = value;
+    },
     render() {
       stateIndex = refIndex = 0;
       context = module.AuthContextProvider({ children: null }).props.value;
@@ -184,6 +210,27 @@ test("guest startup never refreshes; hook requires its provider", async () => {
     " password ",
   ]);
   assert.equal(app.render().user, null);
+});
+
+test("offline restoration uses only the last active account and waits for connectivity before refreshing", async () => {
+  const app = setup({ marker: "active", online: false, cachedUser: user });
+  app.render();
+  await tick();
+  assert.equal(app.render().user.id, user.id);
+  assert.equal(app.calls.length, 0);
+  await assert.rejects(() => app.render().getAccessToken(), /offline/);
+  assert.equal(app.writes.length, 0);
+  app.online = true;
+  assert.equal(await app.render().getAccessToken(), token.accessToken);
+  assert.equal(app.calls.filter((call) => call.name === "refresh").length, 1);
+  const signedOut = setup({
+    marker: "signed-out",
+    online: false,
+    cachedUser: user,
+  });
+  signedOut.render();
+  await tick();
+  assert.equal(signedOut.render().user, null);
 });
 
 test("login confirms /me, blocks duplicate actions, and preserves password whitespace", async () => {

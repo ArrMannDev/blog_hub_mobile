@@ -11,6 +11,7 @@ export interface Tag extends Category {
 export type BlogStatus = "draft" | "published";
 
 export interface BlogEdits {
+  expectedVersion?: number;
   status?: BlogStatus;
   title: string;
   content: string;
@@ -35,6 +36,9 @@ export interface NewBlogInput extends BlogEdits {
 }
 
 export interface BlogSummary {
+  version?: number;
+  localRevision?: number;
+  syncStatus?: import("./offline").SyncStatus;
   id: string;
   title: string;
   slug: string;

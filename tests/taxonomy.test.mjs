@@ -22,7 +22,21 @@ function load(path, mocks) {
     exports: module.exports,
     Error,
     AbortController,
-    require: (name) => (name in mocks ? mocks[name] : require(name)),
+    require: (name) =>
+      name in mocks
+        ? mocks[name]
+        : name === "@/contexts/AuthContext"
+          ? { useAuth: () => ({ user: null }) }
+          : name === "@/lib/post-taxonomy"
+            ? {
+                postTaxonomy: {
+                  categories: (_user, ...args) =>
+                    mocks["@/lib/api"].api.categories(...args),
+                  tags: (_user, ...args) =>
+                    mocks["@/lib/api"].api.tags(...args),
+                },
+              }
+            : require(name),
   });
   return module.exports;
 }

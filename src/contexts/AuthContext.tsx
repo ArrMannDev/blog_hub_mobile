@@ -1,6 +1,8 @@
 import { ApiError } from "@/lib/api";
 import { authApi } from "@/lib/auth-api";
 import { authStorage } from "@/lib/auth-storage";
+import { offlineProfile } from "@/lib/offline-profile";
+import { hasInternet } from "@/lib/connectivity";
 import type { AuthTokens, AuthUser, ProfileInput } from "@/types/auth";
 import {
   createContext,
@@ -48,6 +50,10 @@ export const AuthContextProvider = ({
   const restoreRequest = useRef<Promise<AuthUser | null> | null>(null);
   const operation = useRef(false);
 
+  useEffect(() => {
+    if (!isRestoring) void offlineProfile.write(user).catch(() => {});
+  }, [user, isRestoring]);
+
   const rememberToken = useCallback((value: AuthTokens) => {
     credentials.current = {
       accessToken: value.accessToken,
@@ -66,6 +72,10 @@ export const AuthContextProvider = ({
   const refreshAccessToken = useCallback((): Promise<string> => {
     if (refreshRequest.current) return refreshRequest.current;
     const pending = (async () => {
+      if (!(await hasInternet()))
+        throw new Error(
+          "You are offline. Your local posts are still available.",
+        );
       try {
         // Persist before rotating: a crash or lost response must never replay an old cookie.
         await authStorage.write("refreshing");
@@ -89,7 +99,11 @@ export const AuthContextProvider = ({
   const getAccessToken = useCallback(async () => {
     await restoreRequest.current;
     if (refreshRequest.current) return refreshRequest.current;
-    if (!credentials.current) throw new Error(expiredMessage);
+    if (!credentials.current) {
+      if ((await authStorage.read()) !== "active")
+        throw new Error(expiredMessage);
+      return refreshAccessToken();
+    }
     return credentials.current.expiresAt > Date.now() + 30_000
       ? credentials.current.accessToken
       : refreshAccessToken();
@@ -142,6 +156,7 @@ export const AuthContextProvider = ({
           if (marker === "refreshing") {
             await clearSession(expiredMessage);
           } else if (marker === "active") {
+            if (!(await hasInternet())) return offlineProfile.read();
             return await authApi.me(await refreshAccessToken());
           }
         } catch {

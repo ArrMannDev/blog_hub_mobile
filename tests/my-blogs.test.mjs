@@ -27,6 +27,32 @@ function load(path, mocks) {
     Blob,
     require: (name) => {
       if (name in mocks) return mocks[name];
+      if (name === "@/contexts/PostSyncContext")
+        return { usePostSync: () => ({ revision: 0 }) };
+      if (name === "@/contexts/AuthContext")
+        return { useAuth: () => ({ user: null }) };
+      if (name === "@/lib/post-taxonomy")
+        return {
+          postTaxonomy: {
+            categories: (_user, ...args) =>
+              mocks["@/lib/api"].api.categories(...args),
+            tags: (_user, ...args) => mocks["@/lib/api"].api.tags(...args),
+          },
+        };
+      if (name === "@/lib/post-crud")
+        return load("lib/post-crud.ts", {
+          "react-native": { Platform: { OS: "web" } },
+          "./api": mocks["@/lib/api"] ?? { ApiError },
+          "./my-blogs-api": mocks["@/lib/my-blogs-api"],
+          "./connectivity": { hasInternet: async () => true },
+          "./offline/cache": {},
+          "./offline/posts": {},
+          "./offline/database": {},
+          "./post-events": { notifyPostChange() {} },
+          "./post-sync": { isPostSyncRunning: () => false },
+        });
+      if (name === "@/lib/connectivity")
+        return { hasInternet: async () => true };
       if (name === "./post-body") return load("lib/post-body.ts", mocks);
       if (name === "expo-file-system") return { File: class {} };
       if (name === "@/components/PostComposer")
@@ -668,7 +694,12 @@ test("create requests whitelist the required post fields and authenticate", asyn
   });
 });
 
-function composer(createFailure, availableTags = [], initialBlog) {
+function composer(
+  createFailure,
+  availableTags = [],
+  initialBlog,
+  options = {},
+) {
   const h = hooks();
   const inputs = [];
   const edits = [];
@@ -706,14 +737,39 @@ function composer(createFailure, availableTags = [], initialBlog) {
     },
     "@/hooks/use-categories": {
       useCategories: () => ({
-        categories: [
-          { id: "category", name: "Life" },
-          { id: "other", name: "Travel" },
-        ],
+        categories: options.offline
+          ? []
+          : [
+              { id: "category", name: "Life" },
+              { id: "other", name: "Travel" },
+            ],
         loading: false,
-        error: false,
+        error: !!options.offline,
       }),
     },
+    "@/lib/connectivity": {
+      hasInternet: async () => options.reportedOnline ?? !options.offline,
+    },
+    ...(options.offline
+      ? {
+          "@/lib/post-crud": {
+            UnconfirmedPostError: class extends Error {},
+            postCrud: {
+              async create(_user, input) {
+                creates++;
+                inputs.push(input);
+                return {
+                  ...blog,
+                  ...input,
+                  categoryId: input.categoryId || null,
+                  tags: [],
+                  syncStatus: "pending",
+                };
+              },
+            },
+          },
+        }
+      : {}),
     "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },
     "@/lib/api": { ApiError },
     "@/lib/my-blogs-api": {
@@ -797,6 +853,22 @@ test("the composer requires a category and later saves update the created ID", a
   assert.equal(app.creates, 1);
   assert.equal(app.updates, 1);
 });
+
+for (const reportedOnline of [false, true]) {
+  test(`the offline composer saves without taxonomy when connectivity reports ${reportedOnline}`, async () => {
+    const app = composer(undefined, [], undefined, {
+      offline: true,
+      reportedOnline,
+    });
+    const result = await app
+      .render()
+      .props.onSave({ title: "Offline", content: "Body", status: "published" });
+    assert.equal(app.creates, 1);
+    assert.equal(result.categoryId, null);
+    assert.equal(result.status, "published");
+    assert.equal(result.syncStatus, "pending");
+  });
+}
 
 test("uncertain create outcomes prevent another POST; definitive validation failures allow correction", async () => {
   const app = composer(new Error("lost response"));
@@ -1080,7 +1152,10 @@ function postActions({
       useSafeAreaInsets: () => ({ top: 44, bottom: 34 }),
     },
     "@/contexts/AuthContext": {
-      useAuth: () => ({ getAccessToken: async () => "token" }),
+      useAuth: () => ({
+        user: { id: "owner" },
+        getAccessToken: async () => "token",
+      }),
     },
     "@/contexts/BlogContext": { BlogContext: {} },
     "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },

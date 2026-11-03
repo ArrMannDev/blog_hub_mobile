@@ -8,12 +8,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BlogContext } from "@/contexts/BlogContext";
 import { useTags } from "@/hooks/use-tags";
 import { useCategories } from "@/hooks/use-categories";
-import { ApiError } from "@/lib/api";
-import { myBlogsApi } from "@/lib/my-blogs-api";
+import { postCrud, UnconfirmedPostError } from "@/lib/post-crud";
+import { hasInternet } from "@/lib/connectivity";
 import type { Blog, BlogEdits, CoverUpload } from "@/types/blog";
 
 export default function PostComposer({ blog }: { blog?: Blog }) {
-  const { getAccessToken } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const cache = useContext(BlogContext);
   const { categories, loading, error, retry } = useCategories();
   const [saved, setSaved] = useState(blog);
@@ -53,20 +53,25 @@ export default function PostComposer({ blog }: { blog?: Blog }) {
   async function save(edits: BlogEdits) {
     if (uncertain)
       throw new Error("Check your Profile before creating another post.");
-    if ((!createdId.current || taxonomyChanged) && (loading || error))
+    // Incomplete posts stay local even when connectivity is stale or unknown.
+    const online = !!categoryId && (await hasInternet());
+    if (online && (!createdId.current || taxonomyChanged) && (loading || error))
       throw new Error("Load the current categories before saving your post.");
     if (
+      online &&
       (!createdId.current || taxonomyChanged) &&
       categoryId &&
       (tagsLoading || tagsError)
     )
       throw new Error("Load the current tags before saving your post.");
     if (
+      online &&
       (!createdId.current || taxonomyChanged) &&
       !categories.some((category) => category.id === categoryId)
     )
       throw new Error("Choose a category for your post.");
     if (
+      online &&
       (!createdId.current || taxonomyChanged) &&
       (tagIds.length > 10 ||
         tagIds.some(
@@ -75,7 +80,7 @@ export default function PostComposer({ blog }: { blog?: Blog }) {
         ))
     )
       throw new Error("Choose tags from the selected category.");
-    const token = await getAccessToken();
+    if (!user) throw new Error("Sign in before saving a post.");
     const input = {
       ...edits,
       ...(categoryChanged ? { categoryId } : {}),
@@ -83,12 +88,16 @@ export default function PostComposer({ blog }: { blog?: Blog }) {
       ...(image ? { image } : image === null ? { coverImageUrl: null } : {}),
     };
     if (createdId.current) {
-      return accepted(await myBlogsApi.update(createdId.current, input, token));
+      if (!saved) throw new Error("Reopen this post before editing.");
+      return accepted(
+        await postCrud.update(user, saved, input, getAccessToken),
+      );
     }
     try {
-      const result = await myBlogsApi.create(
+      const result = await postCrud.create(
+        user,
         { ...input, categoryId, tagIds, status: edits.status ?? "draft" },
-        token,
+        getAccessToken,
       );
       if (!result || typeof result.id !== "string" || !result.id)
         throw new Error("Missing post confirmation");
@@ -96,7 +105,7 @@ export default function PostComposer({ blog }: { blog?: Blog }) {
       createdId.current = result.id;
       return accepted(result);
     } catch (failure) {
-      if (!(failure instanceof ApiError) || failure.status >= 500) {
+      if (failure instanceof UnconfirmedPostError) {
         setUncertain(true);
         throw new Error(
           "We couldn't confirm whether your post was saved. Check your Profile before creating another one.",
@@ -118,6 +127,7 @@ export default function PostComposer({ blog }: { blog?: Blog }) {
           <CoverPicker
             value={image}
             existingUrl={saved?.coverImageUrl ?? null}
+            existingLocal={!!saved?.syncStatus && saved.syncStatus !== "synced"}
             onChange={setImage}
             onPicking={setPicking}
             disabled={saving || uncertain || picking}
@@ -133,9 +143,10 @@ export default function PostComposer({ blog }: { blog?: Blog }) {
               </Text>
             </Pressable>
           </Link>
-          <Text className="field-label">Category · Required</Text>
+          <Text className="field-label">Category · Required to upload</Text>
           <Text className="form-description mb-3">
-            Choose one main topic for your post.
+            Choose one main topic. Without a category, your post saves on this
+            phone until you choose one for upload.
           </Text>
           {loading ? (
             <Text className="form-description">Loading categories…</Text>
@@ -152,8 +163,8 @@ export default function PostComposer({ blog }: { blog?: Blog }) {
             </Pressable>
           ) : categories.length === 0 ? (
             <FormMessage>
-              No categories are available yet. A category is required to create
-              a post.
+              No categories are saved yet. You can still save your post offline.
+              Connect to choose a category before uploading.
             </FormMessage>
           ) : (
             <View
@@ -229,7 +240,7 @@ export default function PostComposer({ blog }: { blog?: Blog }) {
               </Pressable>
             ) : tags.length === 0 ? (
               <Text className="form-description">
-                No tags in this category yet. You can post without tags.
+                No tags available here. You can post without tags.
               </Text>
             ) : (
               <View className="flex-row flex-wrap gap-2">

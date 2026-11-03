@@ -91,13 +91,17 @@ export default function BlogEditor({
       setTitle(result.title);
       setContent(result.content);
       setNotice(
-        status === "draft"
-          ? saved
-            ? "Moved to drafts. This post is no longer public."
-            : "Your draft is saved."
-          : status === "published"
-            ? "Your post is published."
-            : "Changes saved.",
+        result.syncStatus && result.syncStatus !== "synced"
+          ? !result.categoryId
+            ? `Saved on this phone. Connect and choose a category to upload. ${result.status === "published" ? "Your publish request is saved; the post is not public yet." : "Your draft stays private."}`
+            : "Saved on this phone. Waiting to upload; publication changes are not live yet."
+          : status === "draft"
+            ? saved
+              ? "Moved to drafts. This post is no longer public."
+              : "Your draft is saved."
+            : status === "published"
+              ? "Your post is published."
+              : "Changes saved.",
       );
     } catch (error) {
       if (
@@ -121,11 +125,13 @@ export default function BlogEditor({
     <FormScreen
       title={saved ? "Edit post" : "Create post"}
       description={
-        saved?.status === "published"
-          ? "Published · Saving updates your live article."
-          : saved
-            ? "Draft · Your changes stay private."
-            : "Share a story, or save a private draft."
+        saved?.syncStatus && saved.syncStatus !== "synced"
+          ? "Saved locally · Waiting for server confirmation."
+          : saved?.status === "published"
+            ? "Published · Saving updates your live article."
+            : saved
+              ? "Draft · Your changes stay private."
+              : "Share a story, or save a private draft."
       }
     >
       {saved?.publicationBlocked && (

@@ -7,7 +7,7 @@ import StateMessage from "@/components/StateMessage";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/use-theme";
 import { ApiError } from "@/lib/api";
-import { myBlogsApi } from "@/lib/my-blogs-api";
+import { postCrud } from "@/lib/post-crud";
 import type { Blog } from "@/types/blog";
 
 export default function EditPostScreen() {
@@ -30,7 +30,7 @@ export default function EditPostScreen() {
 }
 
 function OwnedPost({ id, userId }: { id: string; userId: string }) {
-  const { getAccessToken } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const { colors } = useTheme();
   const [blog, setBlog] = useState<Blog | null>(null);
   const [error, setError] = useState("");
@@ -41,9 +41,13 @@ function OwnedPost({ id, userId }: { id: string; userId: string }) {
     const controller = new AbortController();
     async function load() {
       try {
-        const token = await getAccessToken();
-        if (controller.signal.aborted) return;
-        const result = await myBlogsApi.detail(id, token, controller.signal);
+        if (!user) return;
+        const result = await postCrud.detail(
+          user,
+          id,
+          getAccessToken,
+          controller.signal,
+        );
         if (controller.signal.aborted) return;
         if (result.author.id !== userId) throw new ApiError(403);
         setBlog(result);
@@ -61,7 +65,7 @@ function OwnedPost({ id, userId }: { id: string; userId: string }) {
     }
     void load();
     return () => controller.abort();
-  }, [getAccessToken, id, userId, attempt]);
+  }, [getAccessToken, id, userId, attempt, user]);
 
   if (blog) return <PostComposer blog={blog} />;
   return (

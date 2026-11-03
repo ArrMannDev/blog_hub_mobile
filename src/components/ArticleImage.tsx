@@ -6,16 +6,18 @@ interface ArticleImageProps {
   url: string | null;
   feed?: boolean;
   alt?: string;
+  local?: boolean;
 }
 
 export default function ArticleImage({
   url,
   feed = false,
   alt,
+  local = false,
 }: ArticleImageProps) {
   const [failed, setFailed] = useState(false);
   const [ratio, setRatio] = useState(3 / 2);
-  const uri = imageUrl(url);
+  const uri = local && url?.startsWith("file://") ? url : imageUrl(url);
   if (!uri || failed) return null;
 
   return (

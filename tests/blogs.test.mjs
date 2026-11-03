@@ -24,6 +24,7 @@ function setup(fetchBlogs) {
   let state = {};
   let context = null;
   let cleanup;
+  let onPostChange;
   const requests = { current: new Map() };
   const react = {
     ...require("react"),
@@ -38,7 +39,13 @@ function setup(fetchBlogs) {
     useContext: () => context,
     useEffect: (effect) => {
       const result = effect();
-      if (result) cleanup = result;
+      if (result) {
+        const previous = cleanup;
+        cleanup = () => {
+          previous?.();
+          result();
+        };
+      }
     },
   };
   const module = { exports: {} };
@@ -50,6 +57,13 @@ function setup(fetchBlogs) {
       if (name === "react") return react;
       if (name === "@/lib/api") return { api: { blogs: fetchBlogs } };
       if (name === "@/lib/reading") return require("../src/lib/reading.ts");
+      if (name === "@/lib/post-events")
+        return {
+          subscribePostChanges(callback) {
+            onPostChange = callback;
+            return () => {};
+          },
+        };
       return require(name);
     },
   });
@@ -61,6 +75,7 @@ function setup(fetchBlogs) {
     },
     useBlogs: module.exports.useBlogs,
     cleanup: () => cleanup(),
+    serverChanged: () => onPostChange("owner", true),
   };
 }
 
@@ -77,6 +92,21 @@ test("query caches remain independent and cached hook reads do not refetch", asy
   assert.equal(feeds["category=tech&q=art"].items[0].id, "search");
   assert.equal(app.useBlogs("q=art&category=tech").items[0].id, "search");
   assert.equal(calls, 2);
+});
+
+test("confirmed background uploads invalidate public feeds and cancel older reads", async () => {
+  let resolve;
+  const app = setup(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  const pending = app.render().load("", 1);
+  app.serverChanged();
+  resolve(page(["stale"]));
+  await pending;
+  assert.equal(Object.keys(app.render().feeds).length, 0);
 });
 
 test("pagination deduplicates pages, errors preserve data, and refresh replaces it", async () => {

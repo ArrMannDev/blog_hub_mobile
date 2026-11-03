@@ -18,6 +18,9 @@ export function postBody(input: BlogEdits): {
   body: BodyInit;
 } {
   const fields = {
+    ...(input.expectedVersion !== undefined
+      ? { expectedVersion: input.expectedVersion }
+      : {}),
     title: input.title,
     content: input.content,
     ...(input.status ? { status: input.status } : {}),

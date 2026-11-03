@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { api } from "@/lib/api";
+import { postTaxonomy } from "@/lib/post-taxonomy";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Category } from "@/types/blog";
 
 export function useCategories() {
+  const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -13,8 +15,8 @@ export function useCategories() {
     useCallback(() => {
       setLoading(true);
       const controller = new AbortController();
-      api
-        .categories(controller.signal)
+      postTaxonomy
+        .categories(user?.id, controller.signal)
         .then((items) => {
           if (!controller.signal.aborted) {
             setCategories(items);
@@ -30,7 +32,7 @@ export function useCategories() {
       return () => controller.abort();
       // Retry replaces the focused callback to reload the list.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [attempt]),
+    }, [attempt, user?.id]),
   );
 
   return {

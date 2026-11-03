@@ -9,20 +9,31 @@ import { request } from "./api";
 import { postBody } from "./post-body";
 
 export const myBlogsApi = {
-  setStatus: (id: string, status: BlogStatus, token: string) =>
+  setStatus: (
+    id: string,
+    status: BlogStatus,
+    token: string,
+    expectedVersion?: number,
+  ) =>
     request<Blog>(`/blogs/${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({
+        status,
+        ...(expectedVersion ? { expectedVersion } : {}),
+      }),
     }),
-  remove: (id: string, token: string) =>
-    request<void>(`/blogs/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  remove: (id: string, token: string, version?: number) =>
+    request<void>(
+      `/blogs/${encodeURIComponent(id)}${version ? `?version=${version}` : ""}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    ),
   create: (input: NewBlogInput, token: string) => {
     const payload = postBody(input);
     return request<Blog>(

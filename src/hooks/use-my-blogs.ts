@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
-import { myBlogsApi } from "@/lib/my-blogs-api";
+import { postCrud } from "@/lib/post-crud";
+import { usePostSync } from "@/contexts/PostSyncContext";
 import { mergeBlogs } from "@/lib/reading";
 import type { BlogStatus, BlogSummary } from "@/types/blog";
 
@@ -18,6 +19,7 @@ const initialState = {
 export function useMyBlogs(status: BlogStatus) {
   const { user, getAccessToken } = useAuth();
   const userId = user?.id;
+  const { revision } = usePostSync();
   const [state, setState] = useState(initialState);
   const pending = useRef<AbortController | null>(null);
 
@@ -35,12 +37,11 @@ export function useMyBlogs(status: BlogStatus) {
         requestedPage: page,
       }));
       try {
-        const token = await getAccessToken();
-        if (controller.signal.aborted) return;
-        const result = await myBlogsApi.list(
+        const result = await postCrud.list(
+          user!,
           status,
           page,
-          token,
+          getAccessToken,
           controller.signal,
         );
         if (controller.signal.aborted) return;
@@ -70,7 +71,7 @@ export function useMyBlogs(status: BlogStatus) {
         if (pending.current === controller) pending.current = null;
       }
     },
-    [getAccessToken, status, userId],
+    [getAccessToken, status, userId, user],
   );
 
   useFocusEffect(
@@ -80,7 +81,9 @@ export function useMyBlogs(status: BlogStatus) {
         pending.current?.abort();
         pending.current = null;
       };
-    }, [load]),
+      // Refresh the focused list when the offline cache changes.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [load, revision]),
   );
 
   return {
