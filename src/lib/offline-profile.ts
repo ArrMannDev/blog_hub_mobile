@@ -1,6 +1,6 @@
+import type { AuthUser } from "@/types/auth";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
-import type { AuthUser } from "@/types/auth";
 
 const key = "bloghub.offline-profile";
 let writes = Promise.resolve();

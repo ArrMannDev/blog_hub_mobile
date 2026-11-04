@@ -10,6 +10,7 @@ import {
 import { AppState } from "react-native";
 import { randomUUID } from "expo-crypto";
 import { useAuth } from "./AuthContext";
+import { countUnreadMessages } from "@/lib/chat-api";
 import { createChatClient } from "@/lib/chat-client";
 import {
   isChatMessage,
@@ -28,6 +29,7 @@ import type {
 interface ChatContextType {
   status: "connecting" | "connected" | "offline";
   revision: number;
+  unreadMessageCount: number;
   connectionVersion: number;
   readVersions: Record<string, number>;
   threads: Record<string, LocalMessage[]>;
@@ -65,6 +67,7 @@ function ChatSession({
   const { getAccessToken, checkSession } = useAuth();
   const [status, setStatus] = useState<ChatContextType["status"]>("offline");
   const [revision, setRevision] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [connectionVersion, setConnectionVersion] = useState(0);
   const [readVersions, setReadVersions] = useState<Record<string, number>>({});
   const [threads, setThreads] = useState<Record<string, LocalMessage[]>>({});
@@ -100,6 +103,28 @@ function ChatSession({
     },
     [mergeThread],
   );
+
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const token = await getAccessToken();
+        const count = await countUnreadMessages(token, controller.signal);
+        if (!controller.signal.aborted) {
+          setUnreadMessageCount(count);
+        }
+      } catch {
+        // Keep the last count until chat changes or reconnects.
+      }
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [getAccessToken, revision, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -318,6 +343,7 @@ function ChatSession({
       value={{
         status,
         revision,
+        unreadMessageCount,
         connectionVersion,
         readVersions,
         threads,

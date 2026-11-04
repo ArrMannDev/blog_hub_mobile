@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useChat } from "@/contexts/ChatContext";
 import Screen from "@/components/Screen";
 import BlogFeed from "@/components/BlogFeed";
 import CategoryStrip from "@/components/CategoryStrip";
@@ -13,6 +14,7 @@ export default function HomeScreen() {
   const [category, setCategory] = useState("");
   const { categories, error, retry } = useCategories();
   const { colors } = useTheme();
+  const { unreadMessageCount } = useChat();
 
   return (
     <Screen>
@@ -38,13 +40,27 @@ export default function HomeScreen() {
             <Pressable
               className="icon-button"
               accessibilityRole="link"
-              accessibilityLabel="Open messages"
+              accessibilityLabel={
+                unreadMessageCount > 0
+                  ? `Open messages, ${unreadMessageCount} unread`
+                  : "Open messages"
+              }
             >
               <Ionicons
                 name="chatbubble-ellipses-outline"
                 size={22}
                 color={colors.foreground}
               />
+              {unreadMessageCount > 0 && (
+                <View
+                  className="absolute right-0 top-0 min-h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1"
+                  pointerEvents="none"
+                >
+                  <Text className="text-[11px] font-bold text-background">
+                    {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                  </Text>
+                </View>
+              )}
             </Pressable>
           </Link>
         </View>

@@ -1,5 +1,5 @@
-import { Platform } from "react-native";
 import type { AuthTokens, AuthUser, ProfileInput } from "@/types/auth";
+import { Platform } from "react-native";
 import { request } from "./api";
 
 export const AUTH_ORIGIN =
@@ -7,15 +7,19 @@ export const AUTH_ORIGIN =
   "https://blog-hub-frontend-one.vercel.app";
 
 function cookieOptions(): RequestInit {
-  if (Platform.OS === "web") return { credentials: "include" };
+  if (Platform.OS === "web") {
+    return { credentials: "include" };
+  }
+
   const origin = new URL(AUTH_ORIGIN.trim());
   if (
     !["https:", "http:"].includes(origin.protocol) ||
     origin.origin !== AUTH_ORIGIN.trim()
-  )
+  ) {
     throw new Error(
       "Sign-in isn't configured correctly. Please contact support.",
     );
+  }
   return { credentials: "include", headers: { Origin: origin.origin } };
 }
 
@@ -48,8 +52,9 @@ async function tokens(result: Promise<AuthTokens>): Promise<AuthTokens> {
     typeof value.expiresIn !== "number" ||
     !Number.isFinite(value.expiresIn) ||
     value.expiresIn <= 0
-  )
+  ) {
     throw new Error("We couldn't confirm your session. Please sign in again.");
+  }
   return value;
 }
 
@@ -63,8 +68,9 @@ async function profile(result: Promise<AuthUser>): Promise<AuthUser> {
     typeof value.email !== "string" ||
     !["author", "admin", "super_admin"].includes(value.role) ||
     value.status !== "active"
-  )
+  ) {
     throw new Error("We couldn't confirm your account. Please sign in again.");
+  }
   return {
     ...value,
     permissions: Array.isArray(value.permissions)
@@ -74,40 +80,61 @@ async function profile(result: Promise<AuthUser>): Promise<AuthUser> {
 }
 
 export const authApi = {
-  login: (email: string, password: string) =>
-    tokens(
+  login: (email: string, password: string) => {
+    return tokens(
       send<AuthTokens>("/login", { email, password }, undefined, "POST", true),
-    ),
-  refresh: () =>
-    tokens(send<AuthTokens>("/refresh", undefined, undefined, "POST", true)),
-  logout: () =>
-    send<{ message: string }>("/logout", undefined, undefined, "POST", true),
-  me: (token: string) =>
-    profile(send<AuthUser>("/me", undefined, token, "GET")),
-  register: (displayName: string, email: string, password: string) =>
-    send<{ message: string }>("/register", { displayName, email, password }),
-  forgotPassword: (email: string) =>
-    send<{ message: string }>("/forgot-password", { email }),
-  resetPassword: (email: string, code: string, newPassword: string) =>
-    send<{ message: string }>(
+    );
+  },
+  refresh: () => {
+    return tokens(
+      send<AuthTokens>("/refresh", undefined, undefined, "POST", true),
+    );
+  },
+  logout: () => {
+    return send<{ message: string }>(
+      "/logout",
+      undefined,
+      undefined,
+      "POST",
+      true,
+    );
+  },
+  me: (token: string) => {
+    return profile(send<AuthUser>("/me", undefined, token, "GET"));
+  },
+  register: (displayName: string, email: string, password: string) => {
+    return send<{ message: string }>("/register", {
+      displayName,
+      email,
+      password,
+    });
+  },
+  forgotPassword: (email: string) => {
+    return send<{ message: string }>("/forgot-password", { email });
+  },
+  resetPassword: (email: string, code: string, newPassword: string) => {
+    return send<{ message: string }>(
       "/reset-password",
       { email, code, newPassword },
       undefined,
       "POST",
       true,
-    ),
-  updateProfile: (token: string, input: ProfileInput) =>
-    profile(send<AuthUser>("/me", input, token, "PATCH")),
+    );
+  },
+  updateProfile: (token: string, input: ProfileInput) => {
+    return profile(send<AuthUser>("/me", input, token, "PATCH"));
+  },
   changePassword: (
     token: string,
     currentPassword: string,
     newPassword: string,
-  ) =>
-    send<{ message: string }>(
+  ) => {
+    return send<{ message: string }>(
       "/change-password",
       { currentPassword, newPassword },
       token,
       "POST",
       true,
-    ),
+    );
+  },
 };

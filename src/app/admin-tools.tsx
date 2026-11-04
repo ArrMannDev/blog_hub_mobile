@@ -14,7 +14,7 @@ import { SubmitButton } from "@/components/AuthFields";
 import { useTheme } from "@/hooks/use-theme";
 import { initials } from "@/lib/reading";
 import FormScreen from "@/components/FormScreen";
-import MarkdownBody from "@/components/MarkdownBody";
+import ModerationReader from "@/components/ModerationReader";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrivatePage } from "@/hooks/use-private-page";
 import { ApiError, request } from "@/lib/api";
@@ -349,6 +349,40 @@ function Manage({ users, actor }: { users: boolean; actor: AuthUser }) {
   }
 
   const path = base + "/" + encodeURIComponent(detail.id);
+  if (!("role" in detail)) {
+    return (
+      <ModerationReader
+        key={detail.id}
+        blog={detail}
+        busy={busy}
+        error={error}
+        onBack={() => {
+          if (!busy) {
+            setError("");
+            setDetail(null);
+          }
+        }}
+        onTogglePublication={() => {
+          void run(path + "/status", "PATCH", {
+            status: detail.status === "published" ? "draft" : "published",
+          });
+        }}
+        onTrash={
+          actor.permissions?.includes("blogs.delete")
+            ? () => {
+                const version = detail.version
+                  ? "?version=" + detail.version
+                  : "";
+                void run(
+                  "/blogs/" + encodeURIComponent(detail.id) + version,
+                  "DELETE",
+                );
+              }
+            : undefined
+        }
+      />
+    );
+  }
   return (
     <FormScreen
       title={users ? "Manage users" : "Moderate posts"}
@@ -372,185 +406,128 @@ function Manage({ users, actor }: { users: boolean; actor: AuthUser }) {
             disabled={busy}
           />
         }
-        {"role" in detail ? (
-          <>
-            <View className="my-2 flex-row items-center gap-3 rounded-lg border border-border bg-surface p-3">
-              <UserIdentity user={detail} showEmail />
+        <>
+          <View className="my-2 flex-row items-center gap-3 rounded-lg border border-border bg-surface p-3">
+            <UserIdentity user={detail} showEmail />
+          </View>
+          {(detail.role === "author" ||
+            (detail.role === "admin" && actor.role === "super_admin")) && (
+            <View className="flex-row items-center gap-3 border-b border-border py-3">
+              <View className="min-w-0 flex-1">
+                <Text className="field-label">Account status</Text>
+                <Text className="form-description">
+                  {detail.status === "active" ? "Active" : "Disabled"}
+                </Text>
+              </View>
+              <Switch
+                accessibilityLabel="Account active"
+                accessibilityHint="Asks for confirmation before changing account status"
+                disabled={busy}
+                trackColor={{
+                  false: colors.controlBorder,
+                  true: colors.navigation,
+                }}
+                value={detail.status === "active"}
+                onValueChange={(active) => {
+                  const label = active ? "Enable account" : "Disable account";
+                  const message = active
+                    ? `Allow ${detail.displayName} to sign in again?`
+                    : `Prevent ${detail.displayName} from signing in?`;
+                  const confirm = () =>
+                    void run(path + "/status", "PATCH", {
+                      status: active ? "active" : "disabled",
+                    });
+                  if (Platform.OS === "web") {
+                    if (window.confirm(message)) confirm();
+                  } else {
+                    Alert.alert(label, message, [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: label,
+                        style: active ? "default" : "destructive",
+                        onPress: confirm,
+                      },
+                    ]);
+                  }
+                }}
+              />
             </View>
-            {(detail.role === "author" ||
-              (detail.role === "admin" && actor.role === "super_admin")) && (
-              <View className="flex-row items-center gap-3 border-b border-border py-3">
-                <View className="min-w-0 flex-1">
-                  <Text className="field-label">Account status</Text>
-                  <Text className="form-description">
-                    {detail.status === "active" ? "Active" : "Disabled"}
+          )}
+          {canGrant && detail.role !== "super_admin" && (
+            <>
+              <Text className="field-label mt-5" accessibilityRole="header">
+                Access rights
+              </Text>
+              <Text className="form-description mt-1">
+                Choose what this admin can do. Changes take effect when you
+                save.
+              </Text>
+              {permissionGroups.map(({ label, options }) => (
+                <View key={label} className="mt-5">
+                  <Text
+                    className="text-sm font-semibold text-secondary"
+                    accessibilityRole="header"
+                  >
+                    {label}
                   </Text>
+                  {options.map(([grant, title, description]) => (
+                    <View
+                      key={grant}
+                      className="min-h-14 flex-row items-center gap-3 border-b border-border py-3"
+                    >
+                      <View className="min-w-0 flex-1">
+                        <Text className="font-semibold text-foreground">
+                          {title}
+                        </Text>
+                        <Text className="form-description mt-1">
+                          {description}
+                        </Text>
+                      </View>
+                      <Switch
+                        accessibilityLabel={title}
+                        accessibilityHint={description}
+                        disabled={busy}
+                        trackColor={{
+                          false: colors.controlBorder,
+                          true: colors.navigation,
+                        }}
+                        value={selected.includes(grant)}
+                        onValueChange={(enabled) =>
+                          setSelected((items) =>
+                            enabled
+                              ? [...items, grant]
+                              : items.filter((item) => item !== grant),
+                          )
+                        }
+                      />
+                    </View>
+                  ))}
                 </View>
-                <Switch
-                  accessibilityLabel="Account active"
-                  accessibilityHint="Asks for confirmation before changing account status"
-                  disabled={busy}
-                  trackColor={{
-                    false: colors.controlBorder,
-                    true: colors.navigation,
-                  }}
-                  value={detail.status === "active"}
-                  onValueChange={(active) => {
-                    const label = active ? "Enable account" : "Disable account";
-                    const message = active
-                      ? `Allow ${detail.displayName} to sign in again?`
-                      : `Prevent ${detail.displayName} from signing in?`;
-                    const confirm = () =>
-                      void run(path + "/status", "PATCH", {
-                        status: active ? "active" : "disabled",
-                      });
-                    if (Platform.OS === "web") {
-                      if (window.confirm(message)) confirm();
-                    } else {
-                      Alert.alert(label, message, [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: label,
-                          style: active ? "default" : "destructive",
-                          onPress: confirm,
-                        },
-                      ]);
-                    }
-                  }}
+              ))}
+              <View className="mt-6">
+                <SubmitButton
+                  label={
+                    detail.role === "author"
+                      ? "Promote to admin"
+                      : "Save permissions"
+                  }
+                  pendingLabel="Saving…"
+                  busy={busy}
+                  onPress={() =>
+                    detail.role === "author"
+                      ? void run(path, "PATCH", {
+                          role: "admin",
+                          permissions: selected,
+                        })
+                      : void run(path + "/permissions", "PATCH", {
+                          permissions: selected,
+                        })
+                  }
                 />
               </View>
-            )}
-            {canGrant && detail.role !== "super_admin" && (
-              <>
-                <Text className="field-label mt-5" accessibilityRole="header">
-                  Access rights
-                </Text>
-                <Text className="form-description mt-1">
-                  Choose what this admin can do. Changes take effect when you
-                  save.
-                </Text>
-                {permissionGroups.map(({ label, options }) => (
-                  <View key={label} className="mt-5">
-                    <Text
-                      className="text-sm font-semibold text-secondary"
-                      accessibilityRole="header"
-                    >
-                      {label}
-                    </Text>
-                    {options.map(([grant, title, description]) => (
-                      <View
-                        key={grant}
-                        className="min-h-14 flex-row items-center gap-3 border-b border-border py-3"
-                      >
-                        <View className="min-w-0 flex-1">
-                          <Text className="font-semibold text-foreground">
-                            {title}
-                          </Text>
-                          <Text className="form-description mt-1">
-                            {description}
-                          </Text>
-                        </View>
-                        <Switch
-                          accessibilityLabel={title}
-                          accessibilityHint={description}
-                          disabled={busy}
-                          trackColor={{
-                            false: colors.controlBorder,
-                            true: colors.navigation,
-                          }}
-                          value={selected.includes(grant)}
-                          onValueChange={(enabled) =>
-                            setSelected((items) =>
-                              enabled
-                                ? [...items, grant]
-                                : items.filter((item) => item !== grant),
-                            )
-                          }
-                        />
-                      </View>
-                    ))}
-                  </View>
-                ))}
-                <View className="mt-6">
-                  <SubmitButton
-                    label={
-                      detail.role === "author"
-                        ? "Promote to admin"
-                        : "Save permissions"
-                    }
-                    pendingLabel="Saving…"
-                    busy={busy}
-                    onPress={() =>
-                      detail.role === "author"
-                        ? void run(path, "PATCH", {
-                            role: "admin",
-                            permissions: selected,
-                          })
-                        : void run(path + "/permissions", "PATCH", {
-                            permissions: selected,
-                          })
-                    }
-                  />
-                </View>
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            <Text className="field-label">{detail.title}</Text>
-            <Text className="form-description">
-              {detail.author.displayName} · {detail.status}
-            </Text>
-            <MarkdownBody content={detail.content} />
-            {
-              <ActionButton
-                label={
-                  detail.status === "published"
-                    ? "Unpublish and block author publishing"
-                    : "Publish and clear publishing block"
-                }
-                onPress={() =>
-                  void run(path + "/status", "PATCH", {
-                    status:
-                      detail.status === "published" ? "draft" : "published",
-                  })
-                }
-                disabled={busy}
-              />
-            }
-            {actor.permissions?.includes("blogs.delete") && (
-              <ActionButton
-                label={"Move to Trash"}
-                onPress={() => {
-                  const remove = () =>
-                    void run(
-                      "/blogs/" +
-                        encodeURIComponent(detail.id) +
-                        (detail.version ? "?version=" + detail.version : ""),
-                      "DELETE",
-                    );
-                  const message = "Move this post to Trash?";
-                  if (Platform.OS === "web") {
-                    if (window.confirm(message)) remove();
-                  } else
-                    Alert.alert(
-                      message,
-                      "The post will be removed from public view.",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Move to Trash",
-                          style: "destructive",
-                          onPress: remove,
-                        },
-                      ],
-                    );
-                }}
-                disabled={busy}
-              />
-            )}
-          </>
-        )}
+            </>
+          )}
+        </>
       </>
     </FormScreen>
   );

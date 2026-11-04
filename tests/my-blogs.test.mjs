@@ -945,6 +945,7 @@ test("Home keeps search in the header and leaves creation to the bottom bar", ()
     "@/contexts/AuthContext": {
       useAuth: () => ({ isAuthenticated: signedIn }),
     },
+    "@/contexts/ChatContext": { useChat: () => ({ unreadMessageCount: 0 }) },
     "@/lib/reading": require("../src/lib/reading.ts"),
   });
   const links = () => {

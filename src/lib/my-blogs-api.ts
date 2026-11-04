@@ -14,8 +14,8 @@ export const myBlogsApi = {
     status: BlogStatus,
     token: string,
     expectedVersion?: number,
-  ) =>
-    request<Blog>(`/blogs/${encodeURIComponent(id)}`, {
+  ) => {
+    return request<Blog>(`/blogs/${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -25,15 +25,17 @@ export const myBlogsApi = {
         status,
         ...(expectedVersion ? { expectedVersion } : {}),
       }),
-    }),
-  remove: (id: string, token: string, version?: number) =>
-    request<void>(
+    });
+  },
+  remove: (id: string, token: string, version?: number) => {
+    return request<void>(
       `/blogs/${encodeURIComponent(id)}${version ? `?version=${version}` : ""}`,
       {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       },
-    ),
+    );
+  },
   create: (input: NewBlogInput, token: string) => {
     const payload = postBody(input);
     return request<Blog>(
@@ -54,16 +56,21 @@ export const myBlogsApi = {
     page: number,
     token: string,
     signal?: AbortSignal,
-  ) =>
-    request<BlogPage>(`/me/blogs?status=${status}&page=${page}&limit=10`, {
+  ) => {
+    return request<BlogPage>(
+      `/me/blogs?status=${status}&page=${page}&limit=10`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        signal,
+      },
+    );
+  },
+  detail: (id: string, token: string, signal?: AbortSignal) => {
+    return request<Blog>(`/me/blogs/${encodeURIComponent(id)}`, {
       headers: { Authorization: `Bearer ${token}` },
       signal,
-    }),
-  detail: (id: string, token: string, signal?: AbortSignal) =>
-    request<Blog>(`/me/blogs/${encodeURIComponent(id)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal,
-    }),
+    });
+  },
   update: (id: string, edits: BlogEdits, token: string) => {
     const payload = postBody(edits);
     return request<Blog>(

@@ -1,5 +1,5 @@
-import { fetch } from "expo/fetch";
 import type { Blog, BlogPage, Category, Tag } from "@/types/blog";
+import { fetch } from "expo/fetch";
 import { API_ORIGIN } from "./reading";
 
 export class ApiError extends Error {
@@ -16,15 +16,52 @@ export class ApiError extends Error {
   }
 }
 
+const errorMessages: Partial<Record<number, string>> = {
+  403: "This action isn't available for your account right now.",
+  413: "Choose a cover image no larger than 5 MB.",
+  415: "Choose a JPEG, PNG, or WebP cover image.",
+  429: "Too many attempts. Please wait a minute and try again.",
+  503: "This service is temporarily unavailable. Please try again later.",
+};
+
+async function readErrorMessage(
+  response: Awaited<ReturnType<typeof fetch>>,
+): Promise<string | undefined> {
+  if (![400, 401, 409].includes(response.status)) {
+    return errorMessages[response.status];
+  }
+
+  const body: unknown = await response.json().catch(() => null);
+  if (!body || typeof body !== "object" || !("message" in body)) {
+    return undefined;
+  }
+
+  const { message } = body;
+  if (typeof message === "string") {
+    return message.slice(0, 500);
+  }
+  if (Array.isArray(message)) {
+    return message
+      .filter((item): item is string => typeof item === "string")
+      .join("\n")
+      .slice(0, 500);
+  }
+  return undefined;
+}
+
 export async function request<T>(
   path: string,
   options: RequestInit = {},
   timeoutMs = 25_000,
 ): Promise<T> {
   const controller = new AbortController();
-  const abort = () => controller.abort();
+  const abort = () => {
+    controller.abort();
+  };
   options.signal?.addEventListener("abort", abort, { once: true });
-  if (options.signal?.aborted) controller.abort();
+  if (options.signal?.aborted) {
+    abort();
+  }
   const timeout = setTimeout(abort, timeoutMs);
   try {
     const response = await fetch(`${API_ORIGIN}/api/v1${path}`, {
@@ -34,36 +71,17 @@ export async function request<T>(
       signal: controller.signal,
     });
     if (!response.ok) {
-      let message: string | undefined;
-      if ([400, 401, 409].includes(response.status)) {
-        const body: unknown = await response.json().catch(() => null);
-        if (body && typeof body === "object" && "message" in body) {
-          const value = body.message;
-          if (typeof value === "string") message = value.slice(0, 500);
-          else if (Array.isArray(value))
-            message = value
-              .filter((item): item is string => typeof item === "string")
-              .join("\n")
-              .slice(0, 500);
-        }
-      }
-      if (response.status === 429)
-        message = "Too many attempts. Please wait a minute and try again.";
-      if (response.status === 403)
-        message = "This action isn't available for your account right now.";
-      if (response.status === 503)
-        message =
-          "This service is temporarily unavailable. Please try again later.";
-      if (response.status === 413)
-        message = "Choose a cover image no larger than 5 MB.";
-      if (response.status === 415)
-        message = "Choose a JPEG, PNG, or WebP cover image.";
-      throw new ApiError(response.status, message);
+      throw new ApiError(response.status, await readErrorMessage(response));
     }
-    if (response.status === 204) return undefined as T;
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     return (await response.json()) as T;
   } catch (error) {
-    if (error instanceof ApiError) throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
     throw new Error(
       controller.signal.aborted
         ? "The request took too long. Please try again."
@@ -76,14 +94,21 @@ export async function request<T>(
 }
 
 export const api = {
-  blogs: (query: string, signal?: AbortSignal) =>
-    request<BlogPage>(`/blogs?${query}`, { signal }),
-  blog: (slug: string, signal?: AbortSignal) =>
-    request<Blog>(`/blogs/${encodeURIComponent(slug)}`, { signal }),
-  categories: (signal?: AbortSignal) =>
-    request<Category[]>("/categories", { signal }),
-  tags: (categoryId: string, signal?: AbortSignal) =>
-    request<Tag[]>(`/tags?categoryId=${encodeURIComponent(categoryId)}`, {
-      signal,
-    }),
+  blogs: (query: string, signal?: AbortSignal) => {
+    return request<BlogPage>(`/blogs?${query}`, { signal });
+  },
+  blog: (slug: string, signal?: AbortSignal) => {
+    return request<Blog>(`/blogs/${encodeURIComponent(slug)}`, { signal });
+  },
+  categories: (signal?: AbortSignal) => {
+    return request<Category[]>("/categories", { signal });
+  },
+  tags: (categoryId: string, signal?: AbortSignal) => {
+    return request<Tag[]>(
+      `/tags?categoryId=${encodeURIComponent(categoryId)}`,
+      {
+        signal,
+      },
+    );
+  },
 };

@@ -1,34 +1,34 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-  Link,
-  Redirect,
-  router,
-  useFocusEffect,
-  useLocalSearchParams,
-} from "expo-router";
-import { useCallback, useContext, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Platform,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
-import Screen from "@/components/Screen";
 import { FormMessage } from "@/components/AuthFields";
+import Screen from "@/components/Screen";
 import { useAuth } from "@/contexts/AuthContext";
 import { BlogContext } from "@/contexts/BlogContext";
 import { useTheme } from "@/hooks/use-theme";
 import { ApiError } from "@/lib/api";
 import {
-  canDeleteTaxonomy,
-  canEditTaxonomy,
-  taxonomyApi,
+    canDeleteTaxonomy,
+    canEditTaxonomy,
+    taxonomyApi,
 } from "@/lib/taxonomy-api";
-import type { TaxonomyEntry } from "@/types/taxonomy";
 import type { AuthUser } from "@/types/auth";
+import type { TaxonomyEntry } from "@/types/taxonomy";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import {
+    Link,
+    Redirect,
+    router,
+    useFocusEffect,
+    useLocalSearchParams,
+} from "expo-router";
+import { useCallback, useContext, useRef, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Platform,
+    Pressable,
+    Text,
+    View,
+} from "react-native";
 
 export default function TopicsScreen() {
   const { user, isRestoring } = useAuth();
@@ -216,7 +216,7 @@ function Topics({
                   size={22}
                   color={colors.foreground}
                 />
-                <Text className="text-[14px] leading-[20px] font-semibold text-foreground">
+                <Text className="text-[14px] leading-5 font-semibold text-foreground">
                   Add {singular}
                 </Text>
               </Pressable>
@@ -252,7 +252,7 @@ function Topics({
         renderItem={({ item }) => (
           <View className="border-b border-border py-3">
             {categoryId ? (
-              <Text className="text-[17px] leading-[24px] font-semibold text-foreground">
+              <Text className="text-[17px] leading-6 font-semibold text-foreground">
                 #{item.name}
               </Text>
             ) : (
@@ -268,10 +268,10 @@ function Topics({
                   className="min-h-11 flex-row items-center gap-3"
                   disabled={busy}
                 >
-                  <Text className="flex-1 text-[17px] leading-[24px] font-semibold text-foreground">
+                  <Text className="flex-1 text-[17px] leading-6 font-semibold text-foreground">
                     {item.name}
                   </Text>
-                  <Text className="text-[13px] leading-[20px] text-secondary">
+                  <Text className="text-[13px] leading-5 text-secondary">
                     Manage tags
                   </Text>
                   <Ionicons

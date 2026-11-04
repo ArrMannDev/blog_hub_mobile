@@ -137,6 +137,23 @@ test("chat REST uses protected conversation/history routes and whitelists recipi
     assert.equal(options.headers.Authorization, "Bearer token");
 });
 
+test("unread message total includes every conversation page", async () => {
+  const signal = new AbortController().signal;
+  const { countUnreadMessages } = load("lib/chat-api.ts", {
+    "./api": {
+      request: async (path, options) => {
+        assert.equal(options.signal, signal);
+        const first = path.includes("page=1");
+        return {
+          totalPages: 2,
+          items: [{ id: first ? "a" : "b", unreadCount: first ? 2 : 3 }],
+        };
+      },
+    },
+  });
+  assert.equal(await countUnreadMessages("token", signal), 5);
+});
+
 function transport() {
   const listeners = new Map(),
     packets = [],
@@ -379,6 +396,7 @@ function session({ userId = "owner", reply } = {}) {
           return connection;
         },
       },
+      "@/lib/chat-api": { countUnreadMessages: async () => 0 },
       "@/lib/chat-messages": helpers,
     },
     {
@@ -662,6 +680,7 @@ test("Home places the messages link immediately to the right of Search", () => {
     },
     "@/hooks/use-categories": { useCategories: () => ({ categories: [] }) },
     "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },
+    "@/contexts/ChatContext": { useChat: () => ({ unreadMessageCount: 5 }) },
     "@/lib/reading": { filterQuery: () => "" },
   });
   assert.deepEqual(
@@ -669,6 +688,11 @@ test("Home places the messages link immediately to the right of Search", () => {
       .filter((node) => node.type === "Link")
       .map((node) => node.props.href),
     ["/explore", "/chats/inbox"],
+  );
+  assert.ok(
+    elements(Home()).some(
+      (node) => node.props.accessibilityLabel === "Open messages, 5 unread",
+    ),
   );
 });
 
