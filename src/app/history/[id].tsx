@@ -112,24 +112,27 @@ function HistoryDetail({ id, userId }: { id: string; userId: string }) {
               No field details are available for this action.
             </Text>
           )}
-          {record.action !== "deleted" && record.postAuthorId === userId && (
-            <Link
-              href={{
-                pathname: "/posts/[id]/edit",
-                params: { id: record.blogId },
-              }}
-              asChild
-            >
-              <Pressable
-                accessibilityRole="link"
-                className="secondary-button mt-4"
+          {!["deleted", "trashed", "permanently_deleted"].includes(
+            record.action,
+          ) &&
+            record.postAuthorId === userId && (
+              <Link
+                href={{
+                  pathname: "/posts/[id]/edit",
+                  params: { id: record.blogId },
+                }}
+                asChild
               >
-                <Text className="text-[15px] leading-[22px] font-semibold text-foreground">
-                  Open current post
-                </Text>
-              </Pressable>
-            </Link>
-          )}
+                <Pressable
+                  accessibilityRole="link"
+                  className="secondary-button mt-4"
+                >
+                  <Text className="text-[15px] leading-[22px] font-semibold text-foreground">
+                    Open current post
+                  </Text>
+                </Pressable>
+              </Link>
+            )}
         </>
       ) : error ? (
         <StateMessage

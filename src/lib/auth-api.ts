@@ -61,11 +61,16 @@ async function profile(result: Promise<AuthUser>): Promise<AuthUser> {
     !value.id ||
     typeof value.displayName !== "string" ||
     typeof value.email !== "string" ||
-    !["author", "admin"].includes(value.role) ||
+    !["author", "admin", "super_admin"].includes(value.role) ||
     value.status !== "active"
   )
     throw new Error("We couldn't confirm your account. Please sign in again.");
-  return value;
+  return {
+    ...value,
+    permissions: Array.isArray(value.permissions)
+      ? value.permissions.filter((permission) => typeof permission === "string")
+      : [],
+  };
 }
 
 export const authApi = {

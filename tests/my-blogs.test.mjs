@@ -339,13 +339,26 @@ test("refresh supersedes an older private response and repeated pagination does 
   pending[0].resolve(page(["old"]));
   await tick();
   assert.equal(app.render().items[0].id, "new");
+  assert.equal(app.render().refreshing, false);
+  app.blur();
+  app.focus();
+  await tick();
+  assert.equal(app.render().loading, true);
+  assert.equal(app.render().refreshing, false);
+  assert.equal(app.render().items[0].id, "new");
+  app.render().refresh();
+  await tick();
+  assert.equal(app.render().refreshing, true);
+  pending[3].resolve(page(["new"]));
+  await tick();
+  assert.equal(app.render().refreshing, false);
   const value = app.render();
   value.loadMore();
   value.loadMore();
   await tick();
-  assert.equal(pending.length, 3);
+  assert.equal(pending.length, 5);
   app.blur();
-  pending[2].resolve(page([]));
+  pending[4].resolve(page([]));
   await tick();
 });
 
@@ -417,6 +430,7 @@ test("own cards open the correct destination and manage uses a separate ellipsis
   const { default: ArticleCard } = load("components/ArticleCard.tsx", {
     react: h.react,
     "./AuthorProfileSheet": { __esModule: true, default: "AuthorProfileSheet" },
+    "./FeedReactions": { __esModule: true, default: "FeedReactions" },
     "@expo/vector-icons/Ionicons": { __esModule: true, default: "Ionicons" },
     "@/hooks/use-theme": { useTheme: () => ({ colors: {} }) },
     "expo-router": { Link: "Link" },
@@ -463,6 +477,20 @@ test("own cards open the correct destination and manage uses a separate ellipsis
     false,
   );
   const publicTree = render({ blog: { ...blog, status: "published" } });
+  const reactions = elements(publicTree).find(
+    (node) => node.type === "FeedReactions",
+  );
+  assert.equal(reactions.props.id, blog.id);
+  assert.equal(
+    elements(
+      elements(publicTree).find((node) => node.type === "Link"),
+    ).includes(reactions),
+    false,
+  );
+  assert.equal(
+    elements(tree).some((node) => node.type === "FeedReactions"),
+    false,
+  );
   assert.equal(
     elements(publicTree).some(
       (node) => node.props?.accessibilityLabel === `Manage ${blog.title}`,
@@ -568,6 +596,7 @@ test("switching profile accounts remounts the private timeline and guests have n
       useSafeAreaInsets: () => ({ bottom: 0 }),
     },
     "@/components/AuthFields": { FormMessage: "FormMessage" },
+    "@/components/ProfileHeader": { ProfileMenu: "ProfileMenu" },
     "@/components/ProfilePosts": { __esModule: true, default: "ProfilePosts" },
     "@/components/Screen": { __esModule: true, default: "Screen" },
     "@/constants/theme": { tabBar: { inset: 20 } },
@@ -1231,10 +1260,10 @@ test("management status updates do not fetch or overwrite content, and block dup
 
 test("delete requires confirmation; failures keep the sheet and list intact", async () => {
   const app = postActions({ failure: new Error("offline") });
-  app.button("Delete post").props.onPress();
+  app.button("Move to Trash").props.onPress();
   assert.equal(app.calls.length, 0);
   assert.equal(app.alert[2][0].style, "cancel");
-  assert.match(app.alert[1], /permanently/);
+  assert.match(app.alert[1], /Trash/i);
   app.alert[2][1].onPress();
   await tick();
   assert.equal(app.calls[0].action, "delete");
@@ -1247,7 +1276,7 @@ test("delete requires confirmation; failures keep the sheet and list intact", as
     ),
   );
   const success = postActions();
-  success.button("Delete post").props.onPress();
+  success.button("Move to Trash").props.onPress();
   success.alert[2][1].onPress();
   await tick();
   assert.equal(success.removed.join(), blog.id);

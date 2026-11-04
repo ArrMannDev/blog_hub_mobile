@@ -1,13 +1,14 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@/hooks/use-theme";
+import { formatDate, initials } from "@/lib/reading";
+import type { BlogSummary } from "@/types/blog";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { MarkdownIt } from "react-native-markdown-display";
-import type { BlogSummary } from "@/types/blog";
-import { formatDate, initials } from "@/lib/reading";
 import ArticleImage from "./ArticleImage";
 import AuthorProfileSheet from "./AuthorProfileSheet";
+import FeedReactions from "./FeedReactions";
 
 const parser = MarkdownIt({ html: false });
 
@@ -56,7 +57,7 @@ export default function ArticleCard({
         editable ? "relative flex-none border-b border-border" : "flex-none"
       }
     >
-      <View className={editable ? "article-row border-b-0" : "article-row"}>
+      <View className="article-row border-b-0">
         <Pressable
           className="min-h-11 min-w-11 flex-none items-center justify-center"
           accessibilityRole="button"
@@ -148,8 +149,21 @@ export default function ArticleCard({
               />
             </Pressable>
           </Link>
+          {!editable &&
+            blog.status === "published" &&
+            (!blog.syncStatus || blog.syncStatus === "synced") && (
+              <View className="mt-3 border-t border-border pt-1">
+                <FeedReactions id={blog.id} slug={blog.slug} />
+              </View>
+            )}
         </View>
       </View>
+      {!editable && (
+        <View
+          className="h-1 w-full border-y border-black/5 bg-[#d3d3d3] dark:bg-[#3a3a3a]"
+          accessible={false}
+        />
+      )}
       {editable && onManage && (
         <Pressable
           className="icon-button absolute right-2 top-3"

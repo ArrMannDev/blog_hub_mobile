@@ -1,5 +1,15 @@
 # BlogHub Mobile — Design Guidelines
 
+## Article discussion — 2026-11-03
+
+End public feed cards with a full-width 8-unit pale grey divider bar (#D3D3D3; #3A3A3A in dark mode), with fine top/bottom rules. Place it below the complete post and reaction row. Private profile management cards retain their thin divider.
+
+Public feed cards also display the shared compact Like/Dislike row with real counts below the excerpt/cover, separated by a fine top rule. Keep it outside the article-opening link. The comment action shows the public top-level count and opens the reader at Comments. Unknown counts use a Comment label rather than a false zero. Private profile cards and unsynced/draft posts do not show the public reaction row. Reuse the cream/sage surfaces and existing icon sizes.
+
+Follow the supplied Facebook discussion reference's compact structure in BlogHub's existing cream/sage theme: a thin-rule reaction row below the article, Comments/Oldest first heading, initials avatars, soft surface comment bubbles, dates and Reply/Edit/Delete text controls. Like/Dislike are accessible Ionicons with counts and selected state, matching the actual API. Replies indent one level and expand/page on demand. Do not show unsupported emoji choices, camera attachments, shares, or sorting controls.
+
+Keep the rounded multiline comment field and sage send button pinned below the scrolling article/comment list. Use device safe areas once and lift the composer for the keyboard. Show the reply/edit target, Cancel, character count, errors and confirmation beside the field. Use a virtualized list with the article as its header, and retain the existing article title, category badge, author line, cover, and Markdown layout.
+
 Status: Visual specification for review. No UI implementation is part of this document.
 Updated: 2026-10-30
 Product scope: See spec.md.

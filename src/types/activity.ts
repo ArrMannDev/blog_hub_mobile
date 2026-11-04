@@ -12,7 +12,7 @@ export interface PrivatePage<T> {
 export interface PostNotification {
   id: string;
   userId: string;
-  type: "post_unpublished" | "post_deleted";
+  type: "post_unpublished" | "post_deleted" | "post_restored";
   blogId: string;
   blogTitle: string;
   message: string;
@@ -26,7 +26,14 @@ export interface PostAction {
   blogTitle: string;
   actorId: string;
   postAuthorId: string;
-  action: "updated" | "published" | "unpublished" | "deleted";
+  action:
+    | "updated"
+    | "published"
+    | "unpublished"
+    | "deleted"
+    | "trashed"
+    | "restored"
+    | "permanently_deleted";
   createdAt: string;
 }
 

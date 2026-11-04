@@ -3,6 +3,9 @@ export const actionLabels = {
   published: "Published post",
   unpublished: "Moved to draft",
   deleted: "Deleted post",
+  trashed: "Moved to Trash",
+  restored: "Restored to drafts",
+  permanently_deleted: "Permanently deleted post",
 };
 
 export const historyFields: Record<string, string> = {

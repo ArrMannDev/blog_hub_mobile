@@ -10,20 +10,19 @@ export function taxonomyName(value: string) {
 
 export function canEditTaxonomy(
   entry: TaxonomyEntry,
-  user: { id: string; role: string },
+  user: { id: string; role: string; permissions?: string[] },
 ) {
   return (
     !!user.id &&
-    ["author", "admin"].includes(user.role) &&
-    entry.createdById === user.id
+    (entry.createdById === user.id || user.permissions?.includes("taxonomy.manage") === true)
   );
 }
 
 export function canDeleteTaxonomy(
   entry: TaxonomyEntry,
-  user: { id: string; role: string },
+  user: { id: string; role: string; permissions?: string[] },
 ) {
-  return user.role === "admin" || canEditTaxonomy(entry, user);
+  return entry.createdById === user.id || user.permissions?.includes("taxonomy.delete") === true;
 }
 
 export const taxonomyApi = {

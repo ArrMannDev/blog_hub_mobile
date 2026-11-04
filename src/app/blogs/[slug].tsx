@@ -1,14 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import ArticleImage from "@/components/ArticleImage";
+import ArticleDiscussion from "@/components/ArticleDiscussion";
 import AuthorLine from "@/components/AuthorLine";
 import MarkdownBody from "@/components/MarkdownBody";
 import Screen from "@/components/Screen";
@@ -18,13 +13,26 @@ import { api, ApiError } from "@/lib/api";
 import type { Blog } from "@/types/blog";
 
 export default function ArticleScreen() {
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { slug, comments } = useLocalSearchParams<{
+    slug: string;
+    comments?: string;
+  }>();
   return (
-    <ArticleReader key={slug} slug={typeof slug === "string" ? slug : ""} />
+    <ArticleReader
+      key={`${slug}:${comments ?? ""}`}
+      slug={typeof slug === "string" ? slug : ""}
+      openComments={comments === "1"}
+    />
   );
 }
 
-function ArticleReader({ slug }: { slug: string }) {
+function ArticleReader({
+  slug,
+  openComments,
+}: {
+  slug: string;
+  openComments: boolean;
+}) {
   const { colors } = useTheme();
   const [blog, setBlog] = useState<Blog | null>(null);
   const [error, setError] = useState<"unavailable" | "network" | null>(null);
@@ -103,10 +111,7 @@ function ArticleReader({ slug }: { slug: string }) {
           />
         </View>
       ) : (
-        <ScrollView
-          contentContainerClassName="pb-8"
-          showsVerticalScrollIndicator={false}
-        >
+        <ArticleDiscussion blogId={blog.id} openComments={openComments}>
           <View className="px-5 pt-2 pb-6">
             <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
               <Text
@@ -179,7 +184,7 @@ function ArticleReader({ slug }: { slug: string }) {
               </View>
             )}
           </View>
-        </ScrollView>
+        </ArticleDiscussion>
       )}
     </Screen>
   );

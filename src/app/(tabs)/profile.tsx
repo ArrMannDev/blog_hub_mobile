@@ -1,3 +1,4 @@
+import { ProfileMenu } from "@/components/ProfileHeader";
 import { FormMessage } from "@/components/AuthFields";
 import ProfilePosts from "@/components/ProfilePosts";
 import Screen from "@/components/Screen";
@@ -22,6 +23,7 @@ export default function ProfileScreen() {
         <Text className="brand" accessibilityRole="header">
           Profile
         </Text>
+        {user && !isRestoring && <ProfileMenu key={user.id} user={user} />}
       </View>
       {isRestoring ? (
         <View className="items-center py-8">

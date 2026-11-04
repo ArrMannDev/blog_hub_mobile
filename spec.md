@@ -1,5 +1,13 @@
 # BlogHub Mobile — Product Specification
 
+## Comments and reactions — 2026-11-03
+
+The public article reader includes real Like/Dislike counts, your selected reaction after sign-in, and paginated plaintext comments with one level of replies. Comments follow the backend's oldest-first order. Guests may read and are sent to sign-in for writes. Authors can edit/delete their own comments and replies; admins can delete any but edit only their own. Parent deletion requires confirmation that all replies are removed.
+
+The fixed bottom composer supports new comments, replies, editing, cancellation, and the backend's 2,000-character limit. Prevent duplicate submissions. Preserve text on failure; after an uncertain creation, block replay and ask the user to check the list. Reaction toggle failures reconcile with a read instead of automatically retrying a non-idempotent write. Scope drafts and selected reactions to the article/account, cancel late reads, and paginate replies separately. No production writes are needed for verification. Comments/reactions require a connection and are not added to the offline post queue.
+
+This authorized increment supersedes the initial v1 exclusions of comments and reactions. The backend supports like/dislike only; emoji reactions, comment images, shares, and relevance sorting are outside this increment.
+
 Status: Draft for review; no implementation authorized by this document.
 Updated: 2026-10-30
 Project: D:/blog_hub_mobile/bloghub-mobile

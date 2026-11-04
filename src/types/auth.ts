@@ -2,7 +2,8 @@ export interface AuthUser {
   id: string;
   displayName: string;
   email: string;
-  role: "author" | "admin";
+  role: "author" | "admin" | "super_admin";
+  permissions?: string[];
   status: "active" | "disabled";
   createdAt: string;
   updatedAt: string;

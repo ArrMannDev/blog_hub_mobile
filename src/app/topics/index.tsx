@@ -198,7 +198,7 @@ function Topics({
                 ? `Labels within ${categoryName || "this category"}.`
                 : "Main topics for posts. Open a category to manage its tags."}{" "}
               These are shared across BlogHub.{" "}
-              {user.role === "admin"
+              {user.permissions?.includes("taxonomy.delete")
                 ? "You can rename your own entries and delete any entry."
                 : "You can rename and delete only entries you created."}
             </Text>

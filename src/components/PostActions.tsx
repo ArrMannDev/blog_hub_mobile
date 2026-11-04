@@ -1,23 +1,23 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
-import { useContext, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { BlogContext } from "@/contexts/BlogContext";
 import { useTheme } from "@/hooks/use-theme";
 import { ApiError } from "@/lib/api";
 import { postCrud } from "@/lib/post-crud";
 import type { BlogSummary } from "@/types/blog";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { router } from "expo-router";
+import { useContext, useRef, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FormMessage } from "./AuthFields";
 
 export default function PostActions({
@@ -92,14 +92,14 @@ export default function PostActions({
 
   function confirmDelete() {
     if (pending.current) return;
-    const message = `Delete “${blog.title}” permanently? This cannot be undone.`;
+    const message = `Move “${blog.title}” to Trash?`;
     if (Platform.OS === "web") {
       if (window.confirm(message)) void update("delete");
     } else {
-      Alert.alert("Delete post?", message, [
+      Alert.alert("Move to Trash?", message, [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete post",
+          text: "Move to Trash",
           style: "destructive",
           onPress: () => {
             void update("delete");
@@ -147,7 +147,7 @@ export default function PostActions({
         >
           <View className="flex-row items-center justify-between gap-3">
             <Text
-              className="font-title text-[20px] leading-[28px] text-foreground"
+              className="font-title text-[20px] leading-7 text-foreground"
               accessibilityRole="header"
             >
               Post options
@@ -266,10 +266,10 @@ export default function PostActions({
                 />
                 <View className="min-w-0 flex-1">
                   <Text className="post-action-label text-destructive">
-                    Delete post
+                    Move to Trash
                   </Text>
                   <Text className="form-description">
-                    Permanently delete this post
+                    Remove this post from your active posts
                   </Text>
                 </View>
               </Pressable>

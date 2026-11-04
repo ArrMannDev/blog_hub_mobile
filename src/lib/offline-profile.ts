@@ -15,9 +15,9 @@ export const offlineProfile = {
       return typeof value.id === "string" &&
         typeof value.displayName === "string" &&
         typeof value.email === "string" &&
-        ["author", "admin"].includes(value.role ?? "") &&
+        ["author", "admin", "super_admin"].includes(value.role ?? "") &&
         value.status === "active"
-        ? (value as AuthUser)
+        ? { ...(value as AuthUser), permissions: [] }
         : null;
     } catch {
       return null;

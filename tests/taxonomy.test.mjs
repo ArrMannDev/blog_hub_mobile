@@ -115,6 +115,7 @@ function screen(
   file,
   {
     role = "author",
+    permissions = role === "admin" ? ["taxonomy.delete"] : [],
     userId = "owner",
     params = {},
     failure,
@@ -133,7 +134,7 @@ function screen(
     cleanup,
     alert,
     invalidated = 0;
-  const user = signedIn ? { id: userId, role } : null;
+  const user = signedIn ? { id: userId, role, permissions } : null;
   const react = {
     ...require("react"),
     useState(initial) {

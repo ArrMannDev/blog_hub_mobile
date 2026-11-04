@@ -24,7 +24,7 @@ export function useMyBlogs(status: BlogStatus) {
   const pending = useRef<AbortController | null>(null);
 
   const load = useCallback(
-    async (page: number, replace = false) => {
+    async (page: number, replace = false, showRefresh = false) => {
       if (!userId || (pending.current && !replace)) return;
       pending.current?.abort();
       const controller = new AbortController();
@@ -32,7 +32,7 @@ export function useMyBlogs(status: BlogStatus) {
       setState((current) => ({
         ...current,
         loading: true,
-        refreshing: replace && current.items.length > 0,
+        refreshing: showRefresh,
         error: "",
         requestedPage: page,
       }));
@@ -93,8 +93,8 @@ export function useMyBlogs(status: BlogStatus) {
         ...current,
         items: current.items.filter((item) => item.id !== id),
       })),
-    refresh: () => {
-      void load(1, true);
+    refresh: (showIndicator = true) => {
+      void load(1, true, showIndicator);
     },
     loadMore: () => {
       if (state.hasMore && !state.loading && !state.error)

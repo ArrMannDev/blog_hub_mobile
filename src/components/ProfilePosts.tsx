@@ -21,21 +21,21 @@ export default function ProfilePosts({ user }: { user: AuthUser }) {
   const [status, setStatus] = useState<BlogStatus>("published");
   // Mount a fresh private list for each account/status, rather than sharing public feed caches.
   return (
-    <PostList
-      key={`${user.id}:${status}`}
-      user={user}
-      status={status}
-      onSelect={setStatus}
-    />
+    <>
+      <ProfileHeader user={user} />
+      <PostList
+        key={`${user.id}:${status}`}
+        status={status}
+        onSelect={setStatus}
+      />
+    </>
   );
 }
 
 function PostList({
-  user,
   status,
   onSelect,
 }: {
-  user: AuthUser;
   status: BlogStatus;
   onSelect(status: BlogStatus): void;
 }) {
@@ -45,6 +45,7 @@ function PostList({
     items,
     loading,
     refreshing,
+    requestedPage,
     error,
     refresh,
     loadMore,
@@ -55,6 +56,7 @@ function PostList({
     <>
       <FlatList
         className="flex-1"
+        contentInsetAdjustmentBehavior="never"
         data={items}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
@@ -79,11 +81,10 @@ function PostList({
         }
         ListHeaderComponent={
           <>
-            <ProfileHeader user={user} />
             <PostSyncStatus />
-            <View className="border-t border-border px-5 pt-5">
+            <View className="border-t border-border px-5">
               <View
-                className="mt-3 flex-row gap-6 border-b border-border"
+                className="flex-row gap-6 border-b border-border"
                 accessibilityRole="tablist"
               >
                 {(["published", "draft"] as const).map((value) => (
@@ -142,7 +143,7 @@ function PostList({
                 action="Try again"
                 onAction={retry}
               />
-            ) : loading && !refreshing ? (
+            ) : loading && requestedPage > 1 && !refreshing ? (
               <ActivityIndicator
                 className="py-6"
                 color={colors.foreground}
@@ -158,7 +159,7 @@ function PostList({
           onClose={() => setSelected(null)}
           onChanged={(id) => {
             removeFromList(id);
-            refresh();
+            refresh(false);
           }}
         />
       )}
