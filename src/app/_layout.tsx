@@ -1,3 +1,4 @@
+import FaqHelp from "@/components/FaqHelp";
 import { AuthContextProvider } from "@/contexts/AuthContext";
 import { BlogContextProvider } from "@/contexts/BlogContext";
 import { ChatContextProvider } from "@/contexts/ChatContext";
@@ -59,6 +60,7 @@ export default function RootLayout() {
                     contentStyle: { backgroundColor: colors.background },
                   }}
                 />
+                <FaqHelp />
               </ChatContextProvider>
             </PostSyncProvider>
           </BlogContextProvider>
