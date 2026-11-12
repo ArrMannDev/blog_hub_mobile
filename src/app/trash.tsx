@@ -1,17 +1,17 @@
-import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { useCallback, useRef, useState } from "react";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { Alert, Platform, Pressable, Text, View } from "react-native";
 import ActionButton from "@/components/ActionButton";
 import FormScreen from "@/components/FormScreen";
-import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrivatePage } from "@/hooks/use-private-page";
+import { useTheme } from "@/hooks/use-theme";
 import { ApiError, request } from "@/lib/api";
 import { notifyPostChange } from "@/lib/post-events";
 import { formatDate, initials } from "@/lib/reading";
 import type { PrivatePage } from "@/types/activity";
 import type { Blog, BlogSummary } from "@/types/blog";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
+import { useCallback, useRef, useState } from "react";
+import { Alert, Platform, Pressable, Text, View } from "react-native";
 
 type TrashedPost = BlogSummary & {
   deletedAt: string;
