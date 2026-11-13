@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/api";
 import { authApi } from "@/lib/auth-api";
+import { pushDevice } from "@/lib/push-device";
 import { authStorage } from "@/lib/auth-storage";
 import { offlineProfile } from "@/lib/offline-profile";
 import { hasInternet } from "@/lib/connectivity";
@@ -220,6 +221,9 @@ export const AuthContextProvider = ({
   const logout = () =>
     run(async () => {
       // Keep the account visible on failure so the user can retry server revocation.
+      if (credentials.current) {
+        await pushDevice.unregister(credentials.current.accessToken).catch(() => {});
+      }
       await authApi.logout();
       await clearSession();
     });

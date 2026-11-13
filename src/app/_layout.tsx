@@ -1,3 +1,4 @@
+import ChatPushNotifications from "@/components/ChatPushNotifications";
 import FaqHelp from "@/components/FaqHelp";
 import { AuthContextProvider } from "@/contexts/AuthContext";
 import { BlogContextProvider } from "@/contexts/BlogContext";
@@ -60,6 +61,7 @@ export default function RootLayout() {
                     contentStyle: { backgroundColor: colors.background },
                   }}
                 />
+                <ChatPushNotifications />
                 <FaqHelp />
               </ChatContextProvider>
             </PostSyncProvider>

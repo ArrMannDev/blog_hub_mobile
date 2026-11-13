@@ -24,7 +24,9 @@ function load(path, mocks = {}, globals = {}) {
     require: (name) =>
       name in mocks
         ? mocks[name]
-        : name === "@/lib/connectivity"
+        : name === "@/lib/push-device"
+          ? { pushDevice: { unregister: async () => {} } }
+          : name === "@/lib/connectivity"
           ? { hasInternet: async () => true }
           : name === "@/lib/offline-profile"
             ? {
